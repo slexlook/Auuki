@@ -127,6 +127,45 @@ class AutoStartCounter extends HTMLElement {
 
 customElements.define('auto-start-counter', AutoStartCounter);
 
+class WorkoutTextEvent extends HTMLElement {
+    constructor() {
+        super();
+        this.hideTimer = undefined;
+    }
+    connectedCallback() {
+        const self = this;
+        this.abortController = new AbortController();
+        this.signal = { signal: self.abortController.signal };
+
+        xf.sub('ui:workout:text-event', this.onUpdate.bind(this), this.signal);
+        xf.sub('ui:workout:text-event:clear', this.onClear.bind(this), this.signal);
+    }
+    disconnectedCallback() {
+        this.abortController.abort();
+        clearTimeout(this.hideTimer);
+    }
+    onUpdate(textEvent) {
+        if(!exists(textEvent?.message)) {
+            return;
+        }
+
+        clearTimeout(this.hideTimer);
+        this.textContent = textEvent.message;
+        this.classList.add('active');
+
+        this.hideTimer = setTimeout(() => {
+            this.onClear();
+        }, 10000);
+    }
+    onClear() {
+        clearTimeout(this.hideTimer);
+        this.classList.remove('active');
+        this.textContent = '';
+    }
+}
+
+customElements.define('workout-text-event', WorkoutTextEvent);
+
 class ModeLockToggle extends HTMLElement {
     constructor() {
         super();

@@ -26,6 +26,8 @@ class Watch {
         // end Distance
 
         this.intervals         = [];
+        this.textEvents        = [];
+        this.nextTextEventIndex = 0;
         this.workoutType       = "workout";
         this.autoStartCounter  = 3;
         this.autoPauseCounter  = 0;
@@ -50,6 +52,7 @@ class Watch {
             self.stateWorkout = state;
 
             if(self.isWorkoutDone()) {
+                self.clearTextEvent();
                 xf.dispatch('watch:lap');
                 // reset to slope mode 0% when workout is done
                 xf.dispatch('ui:slope-target-set', 0);
@@ -59,6 +62,8 @@ class Watch {
         });
         xf.sub('db:workout',       workout => {
             self.intervals = workout.intervals;
+            self.textEvents = self.workoutToTextEvents(workout);
+            self.nextTextEventIndex = 0;
             if(workout.meta.category?.toLowerCase().includes("test")) {
                 self.workoutType = "test";
                 // force turn off auto pausing for Test Category workouts
@@ -97,6 +102,75 @@ class Watch {
     }
     status() {
         return this.state;
+    }
+    clearTextEvent() {
+        xf.dispatch('ui:workout:text-event:clear');
+    }
+    workoutToTextEvents(workout = {}) {
+        const intervals = workout.intervals ?? [];
+        let workoutOffset = 0;
+
+        const textEvents = intervals.reduce((acc, interval) => {
+            const intervalTextEvents = interval.textEvents ?? [];
+
+            intervalTextEvents.forEach((textEvent) => {
+                acc.push({
+                    message: textEvent.message,
+                    timeoffset: workoutOffset + textEvent.timeoffset,
+                });
+            });
+
+            workoutOffset += interval.duration ?? 0;
+            return acc;
+        }, []);
+
+        return textEvents.sort((left, right) => left.timeoffset - right.timeoffset);
+    }
+    currentWorkoutElapsed() {
+        if(!this.isWorkoutStarted()) {
+            return 0;
+        }
+
+        const currentInterval = this.intervals[this.intervalIndex];
+
+        if(!exists(currentInterval)) {
+            return 0;
+        }
+
+        const elapsedIntervals = this.intervals
+            .slice(0, this.intervalIndex)
+            .reduce((acc, interval) => acc + (interval.duration ?? 0), 0);
+
+        const elapsedSteps = currentInterval.steps
+            .slice(0, this.stepIndex)
+            .reduce((acc, step) => acc + (step.duration ?? 0), 0);
+
+        const currentStepDuration = currentInterval.steps[this.stepIndex]?.duration ?? 0;
+        const elapsedCurrentStep = Math.max(0, currentStepDuration - this.stepTime);
+
+        return elapsedIntervals + elapsedSteps + elapsedCurrentStep;
+    }
+    seekTextEvents(position = 0) {
+        const nextTextEventIndex = this.textEvents.findIndex((textEvent) => textEvent.timeoffset >= position);
+
+        this.clearTextEvent();
+        this.nextTextEventIndex = nextTextEventIndex === -1
+            ? this.textEvents.length
+            : nextTextEventIndex;
+
+        this.emitDueTextEvents(position);
+    }
+    emitDueTextEvents(position) {
+        while(this.nextTextEventIndex < this.textEvents.length) {
+            const textEvent = this.textEvents[this.nextTextEventIndex];
+
+            if(textEvent.timeoffset > position) {
+                return;
+            }
+
+            xf.dispatch('ui:workout:text-event', textEvent);
+            this.nextTextEventIndex += 1;
+        }
     }
     onSources(value) {
         this.autoPause = value.autoPause ?? this.autoPause;
@@ -188,6 +262,8 @@ class Watch {
             xf.dispatch('watch:stepTime',         stepTime);
         }
 
+        self.seekTextEvents(0);
+
         if(exists(self.points)) {
             self.intervalType = 'distance';
         }
@@ -234,6 +310,7 @@ class Watch {
         const self = this;
         if(self.isStarted() || self.isPaused()) {
             timer.postMessage('stop');
+            self.clearTextEvent();
 
             xf.dispatch('watch:event', {
                 timestamp: Date.now(),
@@ -278,6 +355,10 @@ class Watch {
         xf.dispatch('watch:lapTime',  lapTime);
         xf.dispatch('watch:stepTime', stepTime);
 
+        if(self.isWorkoutStarted()) {
+            self.emitDueTextEvents(self.currentWorkoutElapsed());
+        }
+
         if(self.isWorkoutStarted() &&
            (stepTime <= 0) &&
             this.isIntervalType('duration')) {
@@ -300,6 +381,7 @@ class Watch {
 
                 self.nextInterval(intervals, i, s);
                 self.nextStep(intervals, i, s);
+                self.seekTextEvents(self.currentWorkoutElapsed());
             } else {
                 xf.dispatch('workout:done');
             }
@@ -358,6 +440,7 @@ class Watch {
 
                 self.nextInterval(intervals, i, s);
                 self.nextStep(intervals, i, s);
+                self.seekTextEvents(self.currentWorkoutElapsed());
             }
         } else {
             xf.dispatch('watch:lap');
