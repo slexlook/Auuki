@@ -222,6 +222,7 @@ input, svg, a,
 /* End */
 
 .workout-text-event {
+    grid-row: 3;
     position: sticky;
     top: 1rem;
     display: flex;
@@ -230,7 +231,8 @@ input, svg, a,
     width: 100%;
     max-width: none;
     margin: 0;
-    min-height: clamp(8rem, 12vw, 14rem);
+    height: 100%;
+    min-height: 0;
     padding: 1.4rem 1.8rem;
     color: var(--foreground-color);
     background-color: var(--background-color-2);
