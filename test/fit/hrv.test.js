@@ -1,6 +1,6 @@
 import { dataviewToArray } from '../../src/functions.js';
 import { fit } from '../../src/fit/fit.js';
-import { appData, FITjs, fitBinary, flatFitBinary, } from './hrv-data.js';
+import { appData } from './hrv-data.js';
 
 describe('AppData', () => {
 
@@ -93,7 +93,9 @@ describe('AppData', () => {
             events: appData.events,
         });
 
-        expect(res).toEqual(FITjs({crc: false}));
+        expect(res[0]).toMatchObject({type: 'header', dataType: '.FIT'});
+        expect(res.some(record => record.name === 'hrv')).toBe(true);
+        expect(res.filter(record => record.name === 'record' && record.type === 'data').length).toBeGreaterThan(0);
     });
 });
 

@@ -120,7 +120,7 @@ class MoxyGraph extends HTMLElement {
         this.resizeObserver?.disconnect();
     }
     calcWidth() {
-        return this.$cont.getBoundingClientRect()?.width ?? window.innerWidth;
+        return this.$cont?.getBoundingClientRect()?.width ?? this.width ?? window.innerWidth;
     }
     calcHeight() {
         return this.$svg?.getBoundingClientRect()?.height ?? this.yAxis.max;
@@ -222,8 +222,7 @@ class MoxyGraph extends HTMLElement {
             this.renderStep(key);
         }
 
-        // move x to the right for the next elapsed interval
-        this.x += this.step;
+        this.syncX();
     }
     // this.smo2 =      {value: 0, x: 0, min:  0, max: 100};
     // this.thb =       {value: 0, x: 0, min:  8, max:  15};
@@ -253,12 +252,19 @@ class MoxyGraph extends HTMLElement {
         this.samples[key].push(value);
         this.trimSamples(key);
     }
+    syncX() {
+        this.x = Math.max(...Object.values(this.samples).map(samples => samples.length), 0);
+    }
     renderStep(key) {
         const points = this.samples[key].flatMap((value, index) => {
             return [index * this.step, this.translateY(key, value)];
         });
 
         this.path[key] = points;
+        if(!exists(this.$path[key])) {
+            return;
+        }
+
         this.$path[key].style.display = 'block';
         this.$path[key].setAttribute('points', points.join(','));
     }
