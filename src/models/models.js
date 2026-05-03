@@ -9,7 +9,7 @@ import { idb } from '../storage/idb.js';
 import { uuid } from '../storage/uuid.js';
 
 import API from './api.js';
-import { workouts as workoutsFile }  from '../workouts/workouts.js';
+import { workouts as workoutsFile, fetchDirectoryWorkouts }  from '../workouts/workouts.js';
 import { zwo } from '../workouts/zwo.js';
 import { fileHandler } from '../file.js';
 import { Model as Cycling } from '../physics.js';
@@ -762,18 +762,38 @@ class Workouts extends Model {
         const self = this;
         return workoutsFile.map((w) => Object.assign(self.workoutModel.parse(w), {id: uuid()}));
     }
+    async presetWorkouts() {
+        const self = this;
+        const builtInWorkouts = workoutsFile.map((content) => ({content, source: 'built-in'}));
+        const directoryWorkouts = await fetchDirectoryWorkouts();
+
+        return builtInWorkouts.concat(directoryWorkouts).map((item) => {
+            const workout = self.workoutModel.parse(item.content, item.fileName ?? '');
+            workout.id = uuid();
+
+            if(exists(item.fileName)) {
+                workout.fileName = item.fileName;
+            }
+            if(exists(item.source)) {
+                workout.source = item.source;
+            }
+
+            return workout;
+        });
+    }
     defaultIsValid(value) {
         const self = this;
         return exists(value);
     }
     async restore(db) {
         const self = this;
+        const presets = await self.presetWorkouts();
         const workouts = await idb.getAll(`${self.name}`) ?? [];
 
         if(empty(workouts)) {
-            return self.default;
+            return presets;
         } else {
-            return self.default.concat(workouts);
+            return presets.concat(workouts);
         }
     }
     get(workouts, id) {
