@@ -12,6 +12,7 @@ class MoxyGraph extends HTMLElement {
             thb: 'thb',
             heartRate: 'heartRate',
             power: 'power',
+            cadence: 'cadence',
         };
 
         // Moxy defined ranges and color codes:
@@ -26,10 +27,13 @@ class MoxyGraph extends HTMLElement {
         this.smo2 = {value: 0, x: 0, min: 0, max: 100};
         this.thb = {value: 0, x: 0, min: 8, max: 15};
         this.heartRate = {value: 0, x: 0, min: 30, max: 200};
-        this.power = {value: 0, x: 0, min: 0, max: 600};
+        this.power = {value: 0, x: 0, min: 0, max: 500};
+        this.cadence = {value: 0, x: 0, min: 0, max: 150};
 
-        this.path = {smo2: [], thb: [], heartRate: [], power: []};
+        this.path = {smo2: [], thb: [], heartRate: [], power: [], cadence: []};
         this.$path = {};
+        this.active = {smo2: false, thb: false, heartRate: false, power: false, cadence: false};
+        this.chartArea = {top: 0, bottom: 100, height: 100};
         this.xAxis = {min: 0, max: 100};
         this.yAxis = {min: 0, max: 100};
         this.step = 1;
@@ -43,6 +47,7 @@ class MoxyGraph extends HTMLElement {
             thb: 'db:thb',
             heartRate: 'db:heartRate',
             power: 'db:power1s',
+            cadence: 'db:cadence',
         };
         this.selectors = {
             svg: '#moxy-svg',
@@ -51,6 +56,7 @@ class MoxyGraph extends HTMLElement {
                 thb: '#moxy-path-thb',
                 heartRate: '#moxy-path-hr',
                 power: '#moxy-path-power',
+                cadence: '#moxy-path-cadence',
             },
         };
         this.color = {
@@ -58,17 +64,19 @@ class MoxyGraph extends HTMLElement {
             thb: '#FF663A',
             heartRate: '#FE340B',
             power: '#F8C73A',
+            cadence: '#57A6FF',
         };
         this.stroke = {
             all: 1,
         };
         this.handlers = {
-            smo2:      (value) => self.smo2.value = value,
-            heartRate: (value) => self.heartRate.value = value,
-            power:     (value) => self.power.value = value,
+            smo2:      (value) => self.activate('smo2', value),
+            heartRate: (value) => self.activate('heartRate', value),
+            power:     (value) => self.activate('power', value),
+            cadence:   (value) => self.activate('cadence', value),
             thb:       (value) => {
+                self.activate('thb', value);
                 self.adjustYMinMaxFor('thb', value);
-                self.thb.value = value;
             }
         };
 
@@ -84,13 +92,15 @@ class MoxyGraph extends HTMLElement {
 
         this.$cont = document.querySelector('#graph-power') ?? this;
         this.$svg  = this.querySelector(this.selectors.svg);
+    this.$heading = this.$cont.querySelector('.graph--heading');
 
         this.width = this.calcWidth();
+    this.syncChartArea();
 
         for(let key in this.Key) {
-            // this.path[key] = [];
             this.$path[key] = this.querySelector(this.selectors.path[key]);
             this.$path[key].setAttribute('stroke', this.color[key]);
+            this.$path[key].style.display = 'none';
             xf.sub(`${this.prop[key]}`, this.handlers[key].bind(this), this.signal);
         }
 
@@ -103,9 +113,27 @@ class MoxyGraph extends HTMLElement {
     calcWidth() {
         return this.$cont.getBoundingClientRect()?.width ?? window.innerWidth;
     }
+    calcHeight() {
+        return this.$svg?.getBoundingClientRect()?.height ?? this.yAxis.max;
+    }
+    calcTopInset() {
+        return this.$heading?.getBoundingClientRect()?.height ?? 0;
+    }
+    syncChartArea() {
+        const bottom = this.calcHeight();
+        const top = this.calcTopInset();
+
+        this.yAxis.max = bottom;
+        this.chartArea = {
+            top,
+            bottom,
+            height: Math.max(bottom - top, 1),
+        };
+    }
     onResize() {
         // TODO: debounce
         this.width = this.calcWidth();
+        this.syncChartArea();
     }
     adjustYMinMaxFor(key, value) {
         if(this[key].value === 0) {
@@ -120,14 +148,24 @@ class MoxyGraph extends HTMLElement {
             this[key].max = value;
         }
     }
+    activate(key, value) {
+        if(!exists(value)) {
+            return;
+        }
+
+        this.active[key] = true;
+        this[key].value = value;
+    }
     onElapsed() {
         // first calculate
         for(let key in this.path) {
+            if(!this.active[key]) continue;
             this.calcStep(key);
         }
 
         // render all
         for(let key in this.path) {
+            if(!this.active[key]) continue;
             this.renderStep(key);
         }
 
@@ -144,12 +182,12 @@ class MoxyGraph extends HTMLElement {
         return (value - inMin) * (outMax - outMin) / (inMax - inMin) + outMin;
     }
     translateY(key, value) {
-        return this.yAxis.max - this.translate(
+        return this.chartArea.bottom - this.translate(
             clamp(this[key].min, this[key].max, value),
             this[key].min,
             this[key].max,
-            this.yAxis.min,
-            this.yAxis.max
+            0,
+            this.chartArea.height
         );
     }
     calcStep(key) {
@@ -197,6 +235,7 @@ class MoxyGraph extends HTMLElement {
         }
     }
     renderStep(key) {
+        this.$path[key].style.display = 'block';
         const points = this.path[key].join(',');
         this.$path[key].setAttribute('points', points);
     }
