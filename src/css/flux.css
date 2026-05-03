@@ -1774,6 +1774,11 @@ auto-start-counter {
     color: var(--foreground-color-inactive);
 }
 
+.library--switch--heading.unsupported {
+    opacity: 0.65;
+    cursor: help;
+}
+
 .library--switch.active .library--switch--heading {
     color: var(--foreground-color);
 }

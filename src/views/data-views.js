@@ -2,6 +2,7 @@ import { xf, exists, existance, validate, equals, isNumber, last, empty, avg, to
 import { formatTime } from '../utils.js';
 import { models } from '../models/models.js';
 import { DialogMsg } from '../models/enums.js';
+import config from '../models/config.js';
 
 
 //
@@ -1328,6 +1329,13 @@ class NavigationStack extends HTMLElement {
                 }
             },
         };
+        this.supportsHostedAuth = config.supportsHostedAuth();
+
+        if(!this.supportsHostedAuth) {
+            this.tabs.settings.children.profile.$link.classList.add('unsupported');
+            this.tabs.settings.children.profile.$link.title = 'Profile is available only on the official auuki.com deployment';
+        }
+
         xf.sub(`action:nav`, this.onAction.bind(this), this.signal);
     }
     disconnectedCallback() {
@@ -1355,6 +1363,12 @@ class NavigationStack extends HTMLElement {
         }
         if(action === 'settings:profile') {
             this.switch('profile', this.tabs.settings.children);
+
+            if(!this.supportsHostedAuth) {
+                xf.dispatch('action:auth', ':hosted-only');
+                return;
+            }
+
             models.api.auth.loadTurnstile();
             return;
         }
