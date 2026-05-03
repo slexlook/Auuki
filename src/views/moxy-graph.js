@@ -31,6 +31,7 @@ class MoxyGraph extends HTMLElement {
         this.cadence = {value: 0, x: 0, min: 0, max: 150};
 
         this.path = {smo2: [], thb: [], heartRate: [], power: [], cadence: []};
+        this.samples = {smo2: [], thb: [], heartRate: [], power: [], cadence: []};
         this.$path = {};
         this.active = {smo2: false, thb: false, heartRate: false, power: false, cadence: false};
         this.chartArea = {top: 0, bottom: 100, height: 100};
@@ -142,6 +143,16 @@ class MoxyGraph extends HTMLElement {
         // TODO: debounce
         this.width = this.calcWidth();
         this.syncChartArea();
+
+        if(!this.hasDrawableArea()) {
+            return;
+        }
+
+        for(let key in this.samples) {
+            this.trimSamples(key);
+            if(!this.active[key] || this.samples[key].length === 0) continue;
+            this.renderStep(key);
+        }
     }
     onPage(page) {
         if(page !== 'home') {
@@ -154,6 +165,16 @@ class MoxyGraph extends HTMLElement {
     }
     hasDrawableArea() {
         return this.width > 0 && this.chartArea.height > 1 && this.chartArea.bottom > this.chartArea.top;
+    }
+    maxSamples() {
+        return Math.max(Math.floor(this.width / this.step), 1);
+    }
+    trimSamples(key) {
+        const overflow = this.samples[key].length - this.maxSamples();
+
+        if(overflow > 0) {
+            this.samples[key].splice(0, overflow);
+        }
     }
     adjustYMinMaxFor(key, value) {
         if(this[key].value === 0) {
@@ -223,58 +244,23 @@ class MoxyGraph extends HTMLElement {
         );
     }
     calcStep(key) {
-        const y = this.translateY(key, this[key].value);
+        const value = this[key].value;
 
-        if(!Number.isFinite(y)) {
+        if(!Number.isFinite(value)) {
             return;
         }
 
-        let length = this.path[key].length;
-
-        if((length / 2) >= (this.width / this.step)) {
-            const diff = (length / 2) - (this.width / this.step);
-
-            if(diff >= 2) {
-                length = this.width * 2;
-                // splice window diff from the front and account for the one shift
-                this.path[key].splice(0, (diff*2)+2);
-                // shift path x values to start from 0
-                for(let i = 0, j = 0; i < length; i+=1) {
-                    if(i % 2 == 0) {
-                        this.path[key][i] = j;
-                        j+=1;
-                    };
-                }
-                this.x = (length/2) - 1;
-                // shift
-                this.path[key][length-2] = this.x;
-                this.path[key][length-1] = y;
-            } else {
-                // when xAxis.max is reached,
-                // shift in place 2 positions back
-                // and set the last 2 position with the new data
-                for(let i = 2; i < length; i+=1) {
-                    if(i % 2 !== 0) {
-                        this.path[key][i-2] = this.path[key][i];
-                    };
-                }
-                // update x to the new smaller length and
-                // compansate for the shift with - 1
-                this.x = (length/2) - 1;
-                // shift
-                this.path[key][length-2] = this.x;
-                this.path[key][length-1] = y;
-            }
-        } else {
-            // push until xAxis.max is reached
-            this.path[key].push(this.x);
-            this.path[key].push(y);
-        }
+        this.samples[key].push(value);
+        this.trimSamples(key);
     }
     renderStep(key) {
+        const points = this.samples[key].flatMap((value, index) => {
+            return [index * this.step, this.translateY(key, value)];
+        });
+
+        this.path[key] = points;
         this.$path[key].style.display = 'block';
-        const points = this.path[key].join(',');
-        this.$path[key].setAttribute('points', points);
+        this.$path[key].setAttribute('points', points.join(','));
     }
 }
 
