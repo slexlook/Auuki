@@ -104,11 +104,19 @@ class MoxyGraph extends HTMLElement {
             xf.sub(`${this.prop[key]}`, this.handlers[key].bind(this), this.signal);
         }
 
+        xf.sub('db:page', this.onPage.bind(this), this.signal);
         xf.sub(`${this.prop.elapsed}`, this.onElapsed.bind(this), this.signal);
         window.addEventListener(`resize`, this.onResize.bind(this), this.signal);
+
+        this.resizeObserver = new ResizeObserver(() => {
+            this.onResize();
+        });
+        this.resizeObserver.observe(this.$cont);
+        this.resizeObserver.observe(this.$svg);
     }
     disconnectedCallback() {
         this.abortController.abort();
+        this.resizeObserver?.disconnect();
     }
     calcWidth() {
         return this.$cont.getBoundingClientRect()?.width ?? window.innerWidth;
@@ -135,6 +143,18 @@ class MoxyGraph extends HTMLElement {
         this.width = this.calcWidth();
         this.syncChartArea();
     }
+    onPage(page) {
+        if(page !== 'home') {
+            return;
+        }
+
+        requestAnimationFrame(() => {
+            this.onResize();
+        });
+    }
+    hasDrawableArea() {
+        return this.width > 0 && this.chartArea.height > 1 && this.chartArea.bottom > this.chartArea.top;
+    }
     adjustYMinMaxFor(key, value) {
         if(this[key].value === 0) {
             this[key].min = value - 1;
@@ -153,10 +173,22 @@ class MoxyGraph extends HTMLElement {
             return;
         }
 
+        const nextValue = Number(value);
+
+        if(!Number.isFinite(nextValue)) {
+            return;
+        }
+
         this.active[key] = true;
-        this[key].value = value;
+        this[key].value = nextValue;
     }
     onElapsed() {
+        this.onResize();
+
+        if(!this.hasDrawableArea()) {
+            return;
+        }
+
         // first calculate
         for(let key in this.path) {
             if(!this.active[key]) continue;
@@ -192,6 +224,11 @@ class MoxyGraph extends HTMLElement {
     }
     calcStep(key) {
         const y = this.translateY(key, this[key].value);
+
+        if(!Number.isFinite(y)) {
+            return;
+        }
+
         let length = this.path[key].length;
 
         if((length / 2) >= (this.width / this.step)) {
