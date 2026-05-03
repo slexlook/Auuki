@@ -222,10 +222,12 @@ input, svg, a,
 /* End */
 
 .workout-text-event {
-    grid-row: 3;
-    position: sticky;
-    top: 1rem;
-    display: flex;
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    display: none;
     align-items: flex-start;
     justify-content: center;
     width: 100%;
@@ -235,7 +237,7 @@ input, svg, a,
     min-height: 0;
     padding: 1.4rem 1.8rem;
     color: var(--foreground-color);
-    background-color: var(--background-color-2);
+    background-color: color-mix(in srgb, var(--background-color-2) 82%, transparent);
     border: none;
     border-top: 1px solid var(--border-color);
     border-radius: 0;
@@ -247,15 +249,16 @@ input, svg, a,
     text-align: center;
     white-space: normal;
     word-break: break-word;
-    opacity: 1;
+    opacity: 0;
     transform: translateY(0);
-    transition: border-color 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease;
+    transition: opacity 0.18s ease, background-color 0.18s ease;
     pointer-events: none;
     z-index: 10;
 }
 
 .workout-text-event.active {
-    border-top-color: var(--border-color);
+    display: flex;
+    opacity: 1;
 }
 
 /* Variables */
