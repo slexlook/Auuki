@@ -968,6 +968,10 @@ div.graph--bar-group {
     stroke-width: 1;
 }
 
+.moxy--power-fill polygon {
+    stroke: none;
+}
+
 #moxy-path-smo2 {
     /* stroke: #22976C; */
     /* stroke: #57C057; */

@@ -33,6 +33,8 @@ class MoxyGraph extends HTMLElement {
         this.path = {smo2: [], thb: [], heartRate: [], power: [], cadence: []};
         this.samples = {smo2: [], thb: [], heartRate: [], power: [], cadence: []};
         this.$path = {};
+        this.$powerFill = undefined;
+        this.powerFill = [];
         this.active = {smo2: false, thb: false, heartRate: false, power: false, cadence: false};
         this.chartArea = {top: 0, bottom: 100, height: 100};
         this.xAxis = {min: 0, max: 100};
@@ -40,6 +42,7 @@ class MoxyGraph extends HTMLElement {
         this.step = 1;
         this.width = 0;
         this.x = 0;
+        this.ftp = models.ftp.state ?? models.ftp.defaultValue();
 
         // configurations
         this.prop = {
@@ -59,6 +62,7 @@ class MoxyGraph extends HTMLElement {
                 power: '#moxy-path-power',
                 cadence: '#moxy-path-cadence',
             },
+            powerFill: '#moxy-power-fill',
         };
         this.color = {
             smo2: '#57C057',
@@ -93,19 +97,21 @@ class MoxyGraph extends HTMLElement {
 
         this.$cont = document.querySelector('#graph-power') ?? this;
         this.$svg  = this.querySelector(this.selectors.svg);
-    this.$heading = this.$cont.querySelector('.graph--heading');
+        this.$heading = this.$cont.querySelector('.graph--heading');
+        this.$powerFill = this.ensurePowerFillLayer();
 
         this.width = this.calcWidth();
-    this.syncChartArea();
+        this.syncChartArea();
 
         for(let key in this.Key) {
             this.$path[key] = this.querySelector(this.selectors.path[key]);
-            this.$path[key].setAttribute('stroke', this.color[key]);
+            this.$path[key].setAttribute('stroke', key === this.Key.power ? 'none' : this.color[key]);
             this.$path[key].style.display = 'none';
             xf.sub(`${this.prop[key]}`, this.handlers[key].bind(this), this.signal);
         }
 
         xf.sub('db:page', this.onPage.bind(this), this.signal);
+        xf.sub('db:ftp', this.onFTP.bind(this), this.signal);
         xf.sub(`${this.prop.elapsed}`, this.onElapsed.bind(this), this.signal);
         window.addEventListener(`resize`, this.onResize.bind(this), this.signal);
 
@@ -121,6 +127,22 @@ class MoxyGraph extends HTMLElement {
     }
     calcWidth() {
         return this.$cont?.getBoundingClientRect()?.width ?? this.width ?? window.innerWidth;
+    }
+    ensurePowerFillLayer() {
+        let layer = this.querySelector(this.selectors.powerFill);
+
+        if(!exists(layer)) {
+            layer = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+            layer.setAttribute('id', 'moxy-power-fill');
+            layer.setAttribute('class', 'moxy--power-fill');
+            layer.style.display = 'none';
+        }
+
+        if(exists(this.$svg) && layer.parentElement !== this.$svg) {
+            this.$svg.insertBefore(layer, this.$svg.firstElementChild);
+        }
+
+        return layer;
     }
     calcHeight() {
         return this.$svg?.getBoundingClientRect()?.height ?? this.yAxis.max;
@@ -162,6 +184,19 @@ class MoxyGraph extends HTMLElement {
         requestAnimationFrame(() => {
             this.onResize();
         });
+    }
+    onFTP(value) {
+        const ftp = Number(value);
+
+        if(!Number.isFinite(ftp) || ftp <= 0) {
+            return;
+        }
+
+        this.ftp = ftp;
+
+        if(this.active.power && this.samples.power.length > 0) {
+            this.renderStep(this.Key.power);
+        }
     }
     hasDrawableArea() {
         return this.width > 0 && this.chartArea.height > 1 && this.chartArea.bottom > this.chartArea.top;
@@ -261,12 +296,58 @@ class MoxyGraph extends HTMLElement {
         });
 
         this.path[key] = points;
+        if(key === this.Key.power) {
+            this.renderPowerFill();
+            return;
+        }
+
         if(!exists(this.$path[key])) {
             return;
         }
 
         this.$path[key].style.display = 'block';
         this.$path[key].setAttribute('points', points.join(','));
+    }
+    powerZoneColor(value) {
+        const zone = models.ftp.powerToZone(value, this.ftp).name;
+
+        return models.ftp.zoneToColor(zone);
+    }
+    powerFillPolygon(value, index) {
+        const nextValue = this.samples.power[index + 1] ?? value;
+        const x0 = index * this.step;
+        const x1 = (index + 1) * this.step;
+        const y0 = this.translateY(this.Key.power, value);
+        const y1 = this.translateY(this.Key.power, nextValue);
+
+        return {
+            points: `${x0},${this.chartArea.bottom} ${x0},${y0} ${x1},${y1} ${x1},${this.chartArea.bottom}`,
+            color: this.powerZoneColor(value),
+        };
+    }
+    renderPowerFill() {
+        if(exists(this.$path.power)) {
+            this.$path.power.style.display = 'none';
+            this.$path.power.setAttribute('points', '');
+        }
+
+        if(!exists(this.$powerFill)) {
+            return;
+        }
+
+        this.powerFill = this.samples.power.map((value, index) => {
+            return this.powerFillPolygon(value, index);
+        });
+
+        this.$powerFill.replaceChildren(
+            ...this.powerFill.map((item) => {
+                const polygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+                polygon.setAttribute('points', item.points);
+                polygon.setAttribute('fill', item.color);
+                return polygon;
+            })
+        );
+        this.$powerFill.style.display = this.powerFill.length > 0 ? 'block' : 'none';
     }
 }
 
