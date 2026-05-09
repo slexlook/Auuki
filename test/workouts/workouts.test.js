@@ -49,6 +49,8 @@ describe('Workouts', () => {
             'one.zwo',
             'two.zwo',
         ]);
+
+        expect(fetchMock).toHaveBeenCalledWith('https://example.com/zwos/list.txt', {cache: 'no-store'});
     });
 
     test('fetchDirectoryWorkouts loads each listed zwo file', async () => {
@@ -78,6 +80,10 @@ describe('Workouts', () => {
                 source: 'directory',
             },
         ]);
+
+        expect(fetchMock).toHaveBeenNthCalledWith(1, 'https://example.com/auuki/zwos/list.txt', {cache: 'no-store'});
+        expect(fetchMock).toHaveBeenNthCalledWith(2, 'https://example.com/auuki/zwos/one.zwo', {cache: 'no-store'});
+        expect(fetchMock).toHaveBeenNthCalledWith(3, 'https://example.com/auuki/zwos/two.zwo', {cache: 'no-store'});
     });
 
     test('fetchDirectoryWorkouts returns empty when list.txt is missing', async () => {

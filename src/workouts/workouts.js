@@ -517,9 +517,13 @@ function zwoFileUrl(fileName, baseUrl = document.baseURI) {
     return new URL(fileName, zwoDirectoryUrl(baseUrl)).toString();
 }
 
+function fetchDirectoryResource(fetchImpl, url) {
+    return fetchImpl(url, {cache: 'no-store'});
+}
+
 async function fetchDirectoryWorkoutList(fetchImpl = fetch, listUrl = zwoListUrl()) {
     try {
-        const response = await fetchImpl(listUrl);
+        const response = await fetchDirectoryResource(fetchImpl, listUrl);
 
         if(!response.ok) {
             return [];
@@ -544,7 +548,7 @@ async function fetchDirectoryWorkouts(fetchImpl = fetch, baseUrl = document.base
         const url = zwoFileUrl(fileName, baseUrl);
 
         try {
-            const response = await fetchImpl(url);
+            const response = await fetchDirectoryResource(fetchImpl, url);
 
             if(!response.ok) {
                 console.warn(`:workouts :directory :file :failed '${fileName}' :status ${response.status}`);
