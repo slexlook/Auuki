@@ -3,6 +3,7 @@
  */
 
 import { calculateWorkoutPSS, intervalPSS, workoutTemplate } from '../../src/views/workout-list.js';
+import { CadenceTarget } from '../../src/views/data-views.js';
 
 describe('Workout list PSS', () => {
     test('calculates steady state PSS from intensity squared and duration hours', () => {
@@ -49,5 +50,14 @@ describe('Workout list PSS', () => {
 
         expect(workout.pss).toBe(35);
         expect(workoutTemplate(workout)).toContain('<div class="workout--pss">PSS 35</div>');
+    });
+});
+
+describe('Cadence target display', () => {
+    test('renders cadence target as a current over target suffix', () => {
+        const view = new CadenceTarget();
+
+        expect(view.transform(0)).toBe('');
+        expect(view.transform(90)).toBe('/ 90');
     });
 });
