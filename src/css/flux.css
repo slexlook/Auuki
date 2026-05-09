@@ -1616,7 +1616,7 @@ auto-start-counter {
 
 .workout--summary {
     display: grid;
-    grid-template-columns: 5fr 3fr 2fr 1fr 3rem;
+    grid-template-columns: 5fr 3fr 2fr 2fr 1fr 3rem;
 
     align-items: center;
     align-content: center;
@@ -1649,6 +1649,12 @@ auto-start-counter {
     font-size: var(--workout--duration-font-size);
     /* min-width: 60px; */
     color: var(--gray);
+}
+
+.workout--pss {
+    font-size: var(--workout--duration-font-size);
+    color: var(--gray);
+    white-space: nowrap;
 }
 
 .workout--full-info {
