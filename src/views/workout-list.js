@@ -308,6 +308,14 @@ function stepIntensity(power) {
     return power;
 }
 
+function rampPSS(startIntensity, endIntensity, durationHours) {
+    return durationHours * (
+        (startIntensity * startIntensity) +
+        (startIntensity * endIntensity) +
+        (endIntensity * endIntensity)
+    ) / 3;
+}
+
 function intervalPSS(interval) {
     const duration = interval?.duration ?? 0;
     const durationHours = duration / 3600;
@@ -323,7 +331,7 @@ function intervalPSS(interval) {
     const lastIntensity = stepIntensity(lastStep.power);
 
     if(steps.length > 1 && !equals(firstIntensity, lastIntensity)) {
-        return Math.sqrt(((firstIntensity * firstIntensity) + (lastIntensity * lastIntensity)) / 2) * durationHours;
+        return rampPSS(firstIntensity, lastIntensity, durationHours);
     }
 
     return (firstIntensity * firstIntensity) * durationHours;
@@ -349,6 +357,7 @@ export {
     radioOn,
     options,
     stepIntensity,
+    rampPSS,
     intervalPSS,
     calculateWorkoutPSS,
     workoutTemplate,

@@ -2,7 +2,7 @@
  * @jest-environment jsdom
  */
 
-import { calculateWorkoutPSS, intervalPSS, workoutTemplate } from '../../src/views/workout-list.js';
+import { calculateWorkoutPSS, intervalPSS, rampPSS, workoutTemplate } from '../../src/views/workout-list.js';
 import { CadenceTarget } from '../../src/views/data-views.js';
 
 describe('Workout list PSS', () => {
@@ -24,7 +24,12 @@ describe('Workout list PSS', () => {
             ],
         };
 
-        expect(intervalPSS(interval)).toBeCloseTo(Math.sqrt(((0.5 * 0.5) + (0.8 * 0.8)) / 2) * 0.5);
+        expect(intervalPSS(interval)).toBeCloseTo(0.5 * ((0.5 * 0.5) + (0.5 * 0.8) + (0.8 * 0.8)) / 3);
+    });
+
+    test('calculates linearly changing intensity from the integrated squared intensity', () => {
+        expect(rampPSS(0.5, 0.8, 0.5)).toBeCloseTo(0.215);
+        expect(rampPSS(0.8, 0.5, 0.5)).toBeCloseTo(0.215);
     });
 
     test('sums and formats workout PSS for the list', () => {
@@ -48,8 +53,8 @@ describe('Workout list PSS', () => {
             }),
         };
 
-        expect(workout.pss).toBe(35);
-        expect(workoutTemplate(workout)).toContain('<div class="workout--pss">PSS 35</div>');
+        expect(workout.pss).toBe(24);
+        expect(workoutTemplate(workout)).toContain('<div class="workout--pss">PSS 24</div>');
     });
 });
 
