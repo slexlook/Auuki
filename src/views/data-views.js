@@ -786,6 +786,7 @@ class PowerTargetControl extends DataView {
     postInit() {
         const self = this;
         this.state = 0;
+        this.locked = false;
     }
     setDefaults() {
         this.prop = 'db:powerTarget';
@@ -813,14 +814,21 @@ class PowerTargetControl extends DataView {
         this.$dec.addEventListener('pointerup', this.onDec.bind(this), this.signal);
 
         xf.sub(`${this.prop}`, this.onUpdate.bind(this), this.signal);
+        xf.sub('db:lock', this.onLockUpdate.bind(this), this.signal);
+    }
+    onLockUpdate(value) {
+        this.locked = value;
     }
     onInc(e) {
+        if(this.locked) return;
         xf.dispatch(`ui:${this.effects.inc}`);
     }
     onDec(e) {
+        if(this.locked) return;
         xf.dispatch(`ui:${this.effects.dec}`);
     }
     onChange(e) {
+        if(this.locked) return;
         this.state = this.parse(e.target.value);
         xf.dispatch(`ui:${this.effects.set}`, this.state);
     }
