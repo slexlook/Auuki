@@ -984,6 +984,32 @@ div.graph--bar-group {
     /* stroke: #FE340B; */
 }
 
+.cadence-toggle-indicator {
+    position: absolute;
+    top: 3px;
+    right: 6px;
+    width: 18px;
+    height: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--ssb-font-family);
+    font-size: 10px;
+    font-weight: bold;
+    line-height: 1;
+    color: rgba(87, 166, 255, 0.7);
+    background: rgba(53, 54, 58, 0.7);
+    border: 1px solid rgba(87, 166, 255, 0.35);
+    border-radius: 9px;
+    z-index: 2;
+    pointer-events: none;
+    transition: color 0.18s, border-color 0.18s, opacity 0.18s;
+}
+.cadence-toggle-indicator.hidden {
+    color: rgba(170, 170, 170, 0.35);
+    border-color: rgba(170, 170, 170, 0.2);
+}
+
 #workout-list svg.graph--bar-group {
     height: var(--graph-height);
     height: 8em;

@@ -43,6 +43,7 @@ class MoxyGraph extends HTMLElement {
         this.width = 0;
         this.x = 0;
         this.ftp = models.ftp.state ?? models.ftp.defaultValue();
+        this.cadenceVisible = true;
 
         // configurations
         this.prop = {
@@ -69,7 +70,7 @@ class MoxyGraph extends HTMLElement {
             thb: '#FF663A',
             heartRate: '#FE340B',
             power: '#F8C73A',
-            cadence: '#57A6FF',
+            cadence: 'rgba(87, 166, 255, 0.4)',
         };
         this.stroke = {
             all: 1,
@@ -99,6 +100,7 @@ class MoxyGraph extends HTMLElement {
         this.$svg  = this.querySelector(this.selectors.svg);
         this.$heading = this.$cont.querySelector('.graph--heading');
         this.$powerFill = this.ensurePowerFillLayer();
+        this.$cadenceToggle = this.ensureCadenceToggle();
 
         this.width = this.calcWidth();
         this.syncChartArea();
@@ -114,6 +116,7 @@ class MoxyGraph extends HTMLElement {
         xf.sub('db:ftp', this.onFTP.bind(this), this.signal);
         xf.sub(`${this.prop.elapsed}`, this.onElapsed.bind(this), this.signal);
         window.addEventListener(`resize`, this.onResize.bind(this), this.signal);
+        this.$svg.addEventListener('pointerup', this.onToggleCadence.bind(this), this.signal);
 
         this.resizeObserver = new ResizeObserver(() => {
             this.onResize();
@@ -143,6 +146,34 @@ class MoxyGraph extends HTMLElement {
         }
 
         return layer;
+    }
+    ensureCadenceToggle() {
+        let indicator = this.$cont.querySelector('.cadence-toggle-indicator');
+
+        if(!exists(indicator)) {
+            indicator = document.createElement('div');
+            indicator.className = 'cadence-toggle-indicator';
+            indicator.textContent = 'C';
+            this.$cont.appendChild(indicator);
+        }
+
+        return indicator;
+    }
+    onToggleCadence() {
+        this.cadenceVisible = !this.cadenceVisible;
+
+        if(this.$cadenceToggle) {
+            this.$cadenceToggle.classList.toggle('hidden', !this.cadenceVisible);
+        }
+
+        if(!this.cadenceVisible && exists(this.$path.cadence)) {
+            this.$path.cadence.style.display = 'none';
+            this.$path.cadence.setAttribute('points', '');
+        }
+
+        if(this.cadenceVisible && this.active.cadence && this.samples.cadence.length > 0) {
+            this.renderStep(this.Key.cadence);
+        }
     }
     calcHeight() {
         return this.$svg?.getBoundingClientRect()?.height ?? this.yAxis.max;
@@ -298,6 +329,14 @@ class MoxyGraph extends HTMLElement {
         this.path[key] = points;
         if(key === this.Key.power) {
             this.renderPowerFill();
+            return;
+        }
+
+        if(key === this.Key.cadence && !this.cadenceVisible) {
+            if(exists(this.$path[key])) {
+                this.$path[key].style.display = 'none';
+                this.$path[key].setAttribute('points', '');
+            }
             return;
         }
 
