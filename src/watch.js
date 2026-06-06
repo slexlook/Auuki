@@ -510,7 +510,9 @@ xf.reg('watch:stepIndex',     (index, db) => {
         xf.dispatch('ui:cadence-target-set', 0);
     }
     if(exists(powerTarget)) {
-        xf.dispatch('ui:power-target-set', models.ftp.toAbsolute(powerTarget, db.ftp));
+        const absolutePower = models.ftp.toAbsolute(powerTarget, db.ftp);
+        const roundedPower = Math.round(absolutePower / 5.0) * 5;
+        xf.dispatch('ui:power-target-set', roundedPower);
         if(!exists(slopeTarget) && !equals(db.mode, ControlMode.erg)) {
             xf.dispatch('ui:mode-set', ControlMode.erg);
         }

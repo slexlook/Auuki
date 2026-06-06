@@ -327,6 +327,7 @@ xf.reg('workout', (workout, db) => {
 });
 xf.reg('ui:workout:select', (id, db) => {
     db.workout = models.workouts.get(db.workouts, id);
+    models.currentWorkoutId.backup(id);
 });
 xf.reg('ui:planned:select', (id, db) => {
     db.workout = models.planned.get(id);

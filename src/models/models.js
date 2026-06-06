@@ -508,6 +508,19 @@ class DockMode extends Model {
     }
 }
 
+class CurrentWorkoutId extends Model {
+    postInit(args = {}) {
+        const self = this;
+        const storageModel = {
+            key: self.prop,
+            fallback: self.defaultValue(),
+        };
+        self.storage = new args.storage(storageModel);
+    }
+    defaultValue() { return ''; }
+    defaultIsValid(value) { return isString(value); }
+}
+
 class Measurement extends Model {
     postInit(args = {}) {
         const self = this;
@@ -677,6 +690,13 @@ class Workout extends Model {
         return exists(value);
     }
     restore(db) {
+        const savedId = this.storage.restore();
+        if(exists(savedId)) {
+            const found = this.find(db.workouts, savedId);
+            if(exists(found)) {
+                return found;
+            }
+        }
         return first(db.workouts);
     }
     // accessors
@@ -1620,6 +1640,7 @@ const dockMode = new DockMode({prop: 'dockMode', storage: LocalStorageItem});
 const volume = new Volume({prop: 'volume', storage: LocalStorageItem});
 const measurement = new Measurement({prop: 'measurement', storage: LocalStorageItem});
 const dataTileSwitch = new DataTileSwitch({prop: 'dataTileSwitch', storage: LocalStorageItem});
+const currentWorkoutId = new CurrentWorkoutId({prop: 'currentWorkoutId', storage: LocalStorageItem});
 
 const power1s = new PropInterval({prop: 'db:power', effect: 'power1s', interval: 1000});
 const power3s = new PropInterval({prop: 'db:power', effect: 'power3s', interval: 3000});
@@ -1670,6 +1691,7 @@ let models = {
     theme,
     measurement,
     dataTileSwitch,
+    currentWorkoutId,
 
     activity,
     workout,
