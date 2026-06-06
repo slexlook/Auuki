@@ -430,10 +430,14 @@ xf.reg('app:start', async function(_, db) {
     await idb.start('store', 3, ['session', 'workouts', 'activity']);
     db.workouts = await models.workouts.restore();
     db.activity = await models.activity.restore();
-    db.workout = models.workout.restore(db);
+    db.workout = models.workout.restore(db, models.currentWorkoutId.restore());
     models.planned.restore();
 
     await models.session.restore(db);
+    models.workout.syncWithLibrary(db);
+    if(exists(db.workout?.id)) {
+        models.currentWorkoutId.backup(db.workout.id);
+    }
     xf.dispatch('workout:restore');
     xf.dispatch('activity:restore');
 

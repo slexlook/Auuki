@@ -689,15 +689,27 @@ class Workout extends Model {
     defaultIsValid(value) {
         return exists(value);
     }
-    restore(db) {
-        const savedId = this.storage.restore();
-        if(exists(savedId)) {
-            const found = this.find(db.workouts, savedId);
-            if(exists(found)) {
-                return found;
+    restore(db, savedId) {
+        if(exists(savedId) && savedId !== '') {
+            for(let workout of db.workouts) {
+                if(equals(workout.id, savedId)) {
+                    return workout;
+                }
             }
         }
         return first(db.workouts);
+    }
+    syncWithLibrary(db) {
+        if(!exists(db.workout?.meta?.name)) {
+            return;
+        }
+        const match = db.workouts.find((w) =>
+            equals(w.meta.name, db.workout.meta.name) &&
+            (!exists(db.workout.fileName) || equals(w.fileName, db.workout.fileName))
+        );
+        if(exists(match)) {
+            db.workout = match;
+        }
     }
     // accessors
     find(workouts, id) {
@@ -768,6 +780,16 @@ class Workout extends Model {
     }
 }
 
+function presetWorkoutId(workout, item = {}) {
+    if(exists(item.fileName)) {
+        return `directory:${item.fileName}`;
+    }
+    if(item.source === 'built-in' && exists(workout.meta?.name)) {
+        return `built-in:${workout.meta.name}`;
+    }
+    return uuid();
+}
+
 // TODO:
 // - rename to Libarary
 // - use to just manage the library list of workouts
@@ -780,7 +802,11 @@ class Workouts extends Model {
     }
     defaultValue() {
         const self = this;
-        return workoutsFile.map((w) => Object.assign(self.workoutModel.parse(w), {id: uuid()}));
+        return workoutsFile.map((w) => {
+            const workout = self.workoutModel.parse(w);
+            workout.id = presetWorkoutId(workout, {source: 'built-in'});
+            return workout;
+        });
     }
     async presetWorkouts() {
         const self = this;
@@ -789,7 +815,7 @@ class Workouts extends Model {
 
         return builtInWorkouts.concat(directoryWorkouts).map((item) => {
             const workout = self.workoutModel.parse(item.content, item.fileName ?? '');
-            workout.id = uuid();
+            workout.id = presetWorkoutId(workout, item);
 
             if(exists(item.fileName)) {
                 workout.fileName = item.fileName;
