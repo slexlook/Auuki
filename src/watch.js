@@ -383,7 +383,11 @@ class Watch {
                 self.nextStep(intervals, i, s);
                 self.seekTextEvents(self.currentWorkoutElapsed());
             } else {
-                xf.dispatch('workout:done');
+                // already on the last interval: a manual lap means
+                // "I'm done now" — stop both the workout and the watch
+                // instead of only flipping workoutStatus to 'done',
+                // which would leave the timer ticking with no progress.
+                self.stop();
             }
         } else {
             xf.dispatch('watch:lap');
