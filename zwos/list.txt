@@ -1,0 +1,4 @@
+# Add one .zwo file name per line.
+# Example:
+# workout-a.zwo
+# workout-b.zwo

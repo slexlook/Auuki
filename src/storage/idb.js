@@ -78,12 +78,11 @@ function IDB(args = {}) {
         if (!db.objectStoreNames.contains(name)) {
             db.createObjectStore(name, {keyPath: keyPath});
             console.log(`:idb :create-store '${name}'`);
-        } else {
-            console.warn(`:idb :error :createStore 'trying to create store with existing name: ${name}'`);
         }
     }
 
     function createStores(storeNames, keyPaths = []) {
+        storeNames = Array.isArray(storeNames) ? storeNames : [storeNames];
         storeNames.forEach((storeName, i) => {
             createStore(storeName, existance(keyPaths[i], 'id'));
         });

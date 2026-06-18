@@ -62,6 +62,69 @@ describe('Zwo', () => {
         expect(res).toStrictEqual(expected);
     });
 
+    test('Zwo.readToInterval keeps textevents and distributes interval offsets', () => {
+        const input = `
+        <workout_file>
+            <author>Flux</author>
+            <name>Text Events</name>
+            <category>Sweet Spot</category>
+            <description>Workout with text prompts</description>
+            <sporttype>bike</sporttype>
+            <workout>
+                <SteadyState Duration="30" Power="0.50">
+                    <textevent timeoffset="5" message="Settle in"/>
+                    <textevent timeoffset="20" message="Hold cadence"/>
+                </SteadyState>
+                <IntervalsT Repeat="2" OnDuration="20" OffDuration="10" OnPower="1.1" OffPower="0.4">
+                    <textevent timeoffset="3" message="Hit it"/>
+                    <textevent timeoffset="25" message="Breathe"/>
+                    <textevent timeoffset="45" message="Last push"/>
+                </IntervalsT>
+            </workout>
+        </workout_file>`;
+
+        expect(zwo.readToInterval(input)).toStrictEqual({
+            meta: {
+                author: 'Flux',
+                name: 'Text Events',
+                category: 'Sweet Spot',
+                subcategory: '',
+                sportType: 'bike',
+                description: 'Workout with text prompts',
+                duration: 90,
+            },
+            intervals: [
+                {
+                    duration: 30,
+                    steps: [{duration: 30, power: 0.5}],
+                    textEvents: [
+                        {timeoffset: 5, message: 'Settle in'},
+                        {timeoffset: 20, message: 'Hold cadence'},
+                    ],
+                },
+                {
+                    duration: 20,
+                    steps: [{duration: 20, power: 1.1}],
+                    textEvents: [{timeoffset: 3, message: 'Hit it'}],
+                },
+                {
+                    duration: 10,
+                    steps: [{duration: 10, power: 0.4}],
+                    textEvents: [{timeoffset: 5, message: 'Breathe'}],
+                },
+                {
+                    duration: 20,
+                    steps: [{duration: 20, power: 1.1}],
+                    textEvents: [{timeoffset: 15, message: 'Last push'}],
+                },
+                {
+                    duration: 10,
+                    steps: [{duration: 10, power: 0.4}],
+                },
+            ],
+        });
+    });
+
     test('Zwo.read', () => {
         const input = `
         <workout_file>
@@ -103,6 +166,39 @@ describe('Zwo', () => {
         let res = zwo.read(input);
 
         expect(res).toStrictEqual(expected);
+    });
+
+    test('Zwo.read keeps textevents on the source element', () => {
+        const input = `
+        <workout_file>
+            <author>Flux</author>
+            <name>Text Events</name>
+            <category>Sweet Spot</category>
+            <description>Workout with text prompts</description>
+            <sporttype>bike</sporttype>
+            <workout>
+                <SteadyState Duration="30" Power="0.50">
+                    <textevent timeoffset="5" message="Settle in"/>
+                </SteadyState>
+            </workout>
+        </workout_file>`;
+
+        expect(zwo.read(input)).toStrictEqual({
+            head: {
+                author: 'Flux',
+                name: 'Text Events',
+                category: 'Sweet Spot',
+                subcategory: '',
+                sportType: 'bike',
+                description: 'Workout with text prompts',
+            },
+            body: [{
+                element: 'SteadyState',
+                Duration: 30,
+                Power: 0.5,
+                textEvents: [{timeoffset: 5, message: 'Settle in'}],
+            }],
+        });
     });
 
     test('Zwo.write', () => {

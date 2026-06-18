@@ -74,7 +74,7 @@ function attributesToStep(args = {}) {
 function Step(element) {
     const spec = {
         element: element,
-        filter:  (key) => !equals(key, 'element'),
+        filter:  (key) => !['element', 'textEvents'].includes(key),
         toName:  (key) => key.toLowerCase(),
     };
 
@@ -84,7 +84,7 @@ function Step(element) {
 function OnStep(element) {
     const spec = {
         element:    element,
-        filter: (key) => key.startsWith('On') || equals(key, 'Cadence'),
+        filter: (key) => (key.startsWith('On') || equals(key, 'Cadence')) && !equals(key, 'textEvents'),
         toName: (key) => key.replace(/On/g,'').toLocaleLowerCase(),
     };
 
@@ -94,11 +94,80 @@ function OnStep(element) {
 function OffStep(element) {
     const spec = {
         element:    element,
-        filter: (key) => key.startsWith('Off') || key.endsWith('Resting'),
+        filter: (key) => (key.startsWith('Off') || key.endsWith('Resting')) && !equals(key, 'textEvents'),
         toName: (key) => key.replace(/On|Off|Resting/g,'').toLocaleLowerCase(),
     };
 
     return attributesToStep(spec);
+}
+
+function readTextEvents(el) {
+    const textEvents = Array.from(el.children ?? [])
+        .filter((child) => child.tagName?.toLowerCase() === 'textevent')
+        .map((child) => ({
+            timeoffset: parseFloat(child.getAttribute('timeoffset')),
+            message: child.getAttribute('message'),
+        }))
+        .filter((textEvent) => exists(textEvent.message) && !Number.isNaN(textEvent.timeoffset))
+        .sort((left, right) => left.timeoffset - right.timeoffset);
+
+    if(textEvents.length > 0) {
+        return textEvents;
+    }
+
+    return undefined;
+}
+
+function writeTextEvents(textEvents = []) {
+    return textEvents.reduce((acc, textEvent) => {
+        const message = textEvent.message
+            .replace(/&/g, '&amp;')
+            .replace(/"/g, '&quot;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+
+        return `${acc}<textevent timeoffset="${textEvent.timeoffset}" message="${message}"/>`;
+    }, '');
+}
+
+function withTextEvents(target, textEvents) {
+    if(exists(textEvents) && textEvents.length > 0) {
+        target.textEvents = textEvents;
+    }
+
+    return target;
+}
+
+function splitTextEventsByIntervals(textEvents = [], durations = []) {
+    const groups = durations.map(() => []);
+    let offset = 0;
+    let textEventIndex = 0;
+
+    for(let i = 0; i < durations.length; i++) {
+        const duration = durations[i] ?? 0;
+        const end = offset + duration;
+
+        while(textEventIndex < textEvents.length) {
+            const textEvent = textEvents[textEventIndex];
+            const isLastDuration = i === (durations.length - 1);
+            const isInsideInterval = textEvent.timeoffset < end ||
+                (isLastDuration && textEvent.timeoffset <= end);
+
+            if(!isInsideInterval) {
+                break;
+            }
+
+            groups[i].push({
+                timeoffset: textEvent.timeoffset - offset,
+                message: textEvent.message,
+            });
+            textEventIndex += 1;
+        }
+
+        offset = end;
+    }
+
+    return groups;
 }
 
 function Element(args = {}) {
@@ -153,11 +222,17 @@ function Element(args = {}) {
             acc[key] = value;
         }
 
+        const textEvents = readTextEvents(el);
+
+        if(exists(textEvents)) {
+            acc.textEvents = textEvents;
+        }
+
         return acc;
     }
 
     function write(args = {}) {
-        let { content, ...attributes } = args;
+        let { content, textEvents, ...attributes } = args;
 
         content = existance(args.content, defaults.content);
 
@@ -166,7 +241,15 @@ function Element(args = {}) {
             return acc;
         }, '');
 
-        return `${tagOpen + attrsString}${content}${tagClose}`;
+        const children = exists(textEvents) && textEvents.length > 0
+            ? writeTextEvents(textEvents)
+            : '';
+
+        if(tagClose === ' />' && !empty(children)) {
+            return `${tagOpen + attrsString}>${content}${children}</${name}>`;
+        }
+
+        return `${tagOpen + attrsString}${content}${children}${tagClose}`;
     }
 
     function defaultCalcDuration(element) {
@@ -178,10 +261,10 @@ function Element(args = {}) {
         const duration = calcDuration(element);
         const step = Step(element);
 
-        return {
+        return withTextEvents({
             duration: duration,
             steps:    [step],
-        };
+        }, element.textEvents);
     }
 
     function defaultFromInterval(interval) {
@@ -194,6 +277,10 @@ function Element(args = {}) {
         if(exists(step.power)) res.Power = step.power;
         if(exists(step.cadence)) res.Cadence = step.cadence;
         if(exists(step.slope)) res.Slope = step.slope;
+
+        if(exists(interval.textEvents) && interval.textEvents.length > 0) {
+            res.textEvents = interval.textEvents;
+        }
 
         return res;
     }
@@ -247,7 +334,12 @@ function IntervalsT(args = {}) {
             return acc;
         })([]);
 
-        return steps;
+        const textEvents = splitTextEventsByIntervals(
+            element.textEvents ?? [],
+            steps.map((step) => step.duration ?? 0)
+        );
+
+        return steps.map((step, index) => withTextEvents(step, textEvents[index]));
     }
 
     return Element(spec);
@@ -305,13 +397,13 @@ function FreeRide(args = {}) {
         }
 
         if(exists(track)) {
-            return {distance: trackDistance, steps: steps};
+            return withTextEvents({distance: trackDistance, steps: steps}, element.textEvents);
         }
 
-        return {
+        return withTextEvents({
             duration: duration,
             steps: steps,
-        };
+        }, element.textEvents);
 
     }
 
@@ -366,10 +458,10 @@ function Warmup(args = {}) {
             return step;
         });
 
-        return {
+        return withTextEvents({
             duration: duration,
             steps: fixedSteps,
-        };
+        }, element.textEvents);
     }
 
     function fromInterval(interval) {
@@ -382,6 +474,10 @@ function Warmup(args = {}) {
 
         if(exists(start.power)) res.PowerLow = start.power;
         if(exists(end.power))   res.PowerHigh = end.power;
+
+        if(exists(interval.textEvents) && interval.textEvents.length > 0) {
+            res.textEvents = interval.textEvents;
+        }
 
         return res;
     }
@@ -425,10 +521,10 @@ function Cooldown(args = {}) {
             return step;
         });
 
-        return {
+        return withTextEvents({
             duration: duration,
             steps: fixedSteps,
-        };
+        }, element.textEvents);
     }
 
     function fromInterval(interval) {
@@ -441,6 +537,10 @@ function Cooldown(args = {}) {
 
         if(exists(start.power)) res.PowerLow = start.power;
         if(exists(end.power))   res.PowerHigh  = end.power;
+
+        if(exists(interval.textEvents) && interval.textEvents.length > 0) {
+            res.textEvents = interval.textEvents;
+        }
 
         return res;
     }
@@ -504,10 +604,10 @@ function SteadyState(args = {}) {
             step = Step(element);
         }
 
-        return {
+        return withTextEvents({
             duration: duration,
             steps: [step],
-        };
+        }, element.textEvents);
     }
 
     return Element(spec);

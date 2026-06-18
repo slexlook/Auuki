@@ -36,7 +36,6 @@
                 <compatibility-check></compatibility-check>
                 <div id="home-page" class="page active" page="home">
                     <div id="home-page-wrapper">
-
                         <header class="connections-header page-header">
                             <connection-switch for="ble:controllable" id="switch-controllable" class="connection-switch">
                                 <div class="connection-switch--indicator off"></div>
@@ -188,8 +187,12 @@
                                 <z-stack data-key="cadenceZStack">
                                     <z-stack-item class="active">
                                         <h2 class="data-tile--heading">Cadence</h2>
-                                        <cadence-value id=cadence-value"
-                                                       class="data-tile--value">--</cadence-value>
+                                        <cadence-group class="data-tile--value-cont complex">
+                                            <cadence-value id="cadence-value"
+                                                           class="data-tile--value">--</cadence-value>
+                                            <cadence-target id="cadence-target-value"
+                                                            class="data-tile-target--value"></cadence-target>
+                                        </cadence-group>
                                     </z-stack-item>
                                     <z-stack-item>
                                         <h2 class="data-tile--heading">Cadence Lap</h2>
@@ -204,10 +207,10 @@
                                     <z-stack-item>
                                         <h2 class="data-tile--heading">Cadence Target</h2>
                                         <cadence-group class="data-tile--value-cont complex">
-                                            <cadence-value id=cadence-value"
+                                            <cadence-value id="cadence-value"
                                                            class="data-tile--value">--</cadence-value>
-                                            <cadence-target id=cadence-target-value"
-                                                            class="data-tile-target--value active"></cadence-target>
+                                            <cadence-target id="cadence-target-value"
+                                                            class="data-tile-target--value"></cadence-target>
                                         </cadence-group>
                                     </z-stack-item>
                                 </z-stack>
@@ -272,6 +275,7 @@
 
                         <div id="graph-power" class="graph">
                             <auto-start-counter class="">3</auto-start-counter>
+                            <workout-text-event class="workout-text-event"></workout-text-event>
                             <!-- <z-stack data-key="graphZStack">
                                  <z-stack-item class="active"> -->
                                     <h4 class="graph--heading">Graph</h4>
@@ -279,8 +283,9 @@
                                         <svg id="moxy-svg">
                                             <polyline id="moxy-path-smo2" class="moxy--path" points=""/>
                                             <polyline id="moxy-path-thb" class="moxy--path" points=""/>
-                                            <polyline id="moxy-path-hr" class="moxy--path" points=""/>
                                             <polyline id="moxy-path-power" class="moxy--path" points=""/>
+                                            <polyline id="moxy-path-cadence" class="moxy--path" points=""/>
+                                            <polyline id="moxy-path-hr" class="moxy--path" points=""/>
                                         </svg>
                                     </moxy-graph>
                                     <!-- </z-stack-item>
@@ -1475,7 +1480,7 @@
                             <p class="">This is an open-source project. For more information, please visit the <a class="a" href="https://github.com/dvmarinoff/Auuki">github</a> page. There you can get support or join the discussions.</p>
                         </div>
                         <div class="about--version">
-                            <p class="">Latest version: 0.3.9</p>
+                            <p class="">Latest version: 0.4.0</p>
                         </div>
                         <div class="about--version">
                             <p class="">Old stable version still available here: <a class="a" href="https://stable.auuki.com">0.1.43</a></p>

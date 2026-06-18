@@ -221,6 +221,46 @@ input, svg, a,
 }
 /* End */
 
+.workout-text-event {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    display: none;
+    align-items: flex-start;
+    justify-content: center;
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    height: 100%;
+    min-height: 0;
+    padding: 1.4rem 1.8rem;
+    color: var(--foreground-color);
+    background-color: color-mix(in srgb, var(--background-color-2) 40%, transparent);
+    border: none;
+    border-top: 1px solid var(--border-color);
+    border-radius: 0;
+    box-shadow: none;
+    font-family: var(--ssr-font-family);
+    font-size: clamp(2rem, 1.3rem + 1.6vw, 3.8rem);
+    font-weight: 400;
+    line-height: 1.35;
+    text-align: center;
+    white-space: normal;
+    word-break: break-word;
+    opacity: 0;
+    transform: translateY(0);
+    transition: opacity 0.18s ease, background-color 0.18s ease;
+    pointer-events: none;
+    z-index: 10;
+}
+
+.workout-text-event.active {
+    display: flex;
+    opacity: 1;
+}
+
 /* Variables */
 :root {
     --ssb-font-family: 'Roboto', sans-serif;
@@ -928,6 +968,10 @@ div.graph--bar-group {
     stroke-width: 1;
 }
 
+.moxy--power-fill polygon {
+    stroke: none;
+}
+
 #moxy-path-smo2 {
     /* stroke: #22976C; */
     /* stroke: #57C057; */
@@ -938,6 +982,32 @@ div.graph--bar-group {
 }
 #moxy-path-hr {
     /* stroke: #FE340B; */
+}
+
+.cadence-toggle-indicator {
+    position: absolute;
+    top: 3px;
+    right: 6px;
+    width: 18px;
+    height: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--ssb-font-family);
+    font-size: 10px;
+    font-weight: bold;
+    line-height: 1;
+    color: rgba(87, 166, 255, 0.7);
+    background: rgba(53, 54, 58, 0.7);
+    border: 1px solid rgba(87, 166, 255, 0.35);
+    border-radius: 9px;
+    z-index: 2;
+    pointer-events: none;
+    transition: color 0.18s, border-color 0.18s, opacity 0.18s;
+}
+.cadence-toggle-indicator.hidden {
+    color: rgba(170, 170, 170, 0.35);
+    border-color: rgba(170, 170, 170, 0.2);
 }
 
 #workout-list svg.graph--bar-group {
@@ -1572,7 +1642,7 @@ auto-start-counter {
 
 .workout--summary {
     display: grid;
-    grid-template-columns: 5fr 3fr 2fr 1fr 3rem;
+    grid-template-columns: 5fr 3fr 2fr 2fr 1fr 3rem;
 
     align-items: center;
     align-content: center;
@@ -1605,6 +1675,12 @@ auto-start-counter {
     font-size: var(--workout--duration-font-size);
     /* min-width: 60px; */
     color: var(--gray);
+}
+
+.workout--pss {
+    font-size: var(--workout--duration-font-size);
+    color: var(--gray);
+    white-space: nowrap;
 }
 
 .workout--full-info {

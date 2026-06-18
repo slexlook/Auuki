@@ -496,4 +496,85 @@ let workouts = [
 </workout_file>`,
 ];
 
-export { workouts };
+function parseWorkoutList(list = '') {
+    return list
+        .split(/\r?\n/u)
+        .map((line) => line.trim())
+        .filter((line) => line !== '' && !line.startsWith('#'))
+    .filter((line) => !line.startsWith('/') && !line.includes('..'))
+    .filter((line) => /\.zwo$/iu.test(line));
+}
+
+function zwoDirectoryUrl(baseUrl = document.baseURI) {
+    return new URL('zwos/', baseUrl).toString();
+}
+
+function zwoListUrl(baseUrl = document.baseURI) {
+    return new URL('list.txt', zwoDirectoryUrl(baseUrl)).toString();
+}
+
+function zwoFileUrl(fileName, baseUrl = document.baseURI) {
+    return new URL(fileName, zwoDirectoryUrl(baseUrl)).toString();
+}
+
+function fetchDirectoryResource(fetchImpl, url) {
+    return fetchImpl(url, {cache: 'no-store'});
+}
+
+async function fetchDirectoryWorkoutList(fetchImpl = fetch, listUrl = zwoListUrl()) {
+    try {
+        const response = await fetchDirectoryResource(fetchImpl, listUrl);
+
+        if(!response.ok) {
+            return [];
+        }
+
+        return parseWorkoutList(await response.text());
+    } catch(error) {
+        console.warn(`:workouts :directory :list :failed '${listUrl}'`, error);
+        return [];
+    }
+}
+
+async function fetchDirectoryWorkouts(fetchImpl = fetch, baseUrl = document.baseURI) {
+    const listUrl = zwoListUrl(baseUrl);
+    const fileNames = await fetchDirectoryWorkoutList(fetchImpl, listUrl);
+
+    if(fileNames.length === 0) {
+        return [];
+    }
+
+    const workoutsFromDirectory = await Promise.all(fileNames.map(async (fileName) => {
+        const url = zwoFileUrl(fileName, baseUrl);
+
+        try {
+            const response = await fetchDirectoryResource(fetchImpl, url);
+
+            if(!response.ok) {
+                console.warn(`:workouts :directory :file :failed '${fileName}' :status ${response.status}`);
+                return undefined;
+            }
+
+            return {
+                content: await response.text(),
+                fileName,
+                source: 'directory',
+            };
+        } catch(error) {
+            console.warn(`:workouts :directory :file :failed '${fileName}'`, error);
+            return undefined;
+        }
+    }));
+
+    return workoutsFromDirectory.filter(Boolean);
+}
+
+export {
+    workouts,
+    parseWorkoutList,
+    zwoDirectoryUrl,
+    zwoListUrl,
+    zwoFileUrl,
+    fetchDirectoryWorkoutList,
+    fetchDirectoryWorkouts,
+};
