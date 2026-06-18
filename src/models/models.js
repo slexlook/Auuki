@@ -9,7 +9,7 @@ import { idb } from '../storage/idb.js';
 import { uuid } from '../storage/uuid.js';
 
 import API from './api.js';
-import { workouts as workoutsFile }  from '../workouts/workouts.js';
+import { workouts as workoutsFile, fetchDirectoryWorkouts }  from '../workouts/workouts.js';
 import { zwo } from '../workouts/zwo.js';
 import { fileHandler } from '../file.js';
 import { Model as Cycling } from '../physics.js';
@@ -396,7 +396,7 @@ class FTP extends Model {
     zoneToColor(zone) {
         if(equals(zone, 'one'))   return '#636468';
         if(equals(zone, 'two'))   return '#328AFF';
-        if(equals(zone, 'thee'))  return '#44A5AB';
+        if(equals(zone, 'three')) return '#44A5AB';
         if(equals(zone, 'four'))  return '#57C057';
         if(equals(zone, 'five'))  return '#F8C73A';
         if(equals(zone, 'six'))   return '#FF663A';
@@ -506,6 +506,19 @@ class DockMode extends Model {
         window.open(`${href}`, '', `width=${width},height=${height},left=0,top=${top}`);
         window.close();
     }
+}
+
+class CurrentWorkoutId extends Model {
+    postInit(args = {}) {
+        const self = this;
+        const storageModel = {
+            key: self.prop,
+            fallback: self.defaultValue(),
+        };
+        self.storage = new args.storage(storageModel);
+    }
+    defaultValue() { return ''; }
+    defaultIsValid(value) { return isString(value); }
 }
 
 class Measurement extends Model {
@@ -676,8 +689,27 @@ class Workout extends Model {
     defaultIsValid(value) {
         return exists(value);
     }
-    restore(db) {
+    restore(db, savedId) {
+        if(exists(savedId) && savedId !== '') {
+            for(let workout of db.workouts) {
+                if(equals(workout.id, savedId)) {
+                    return workout;
+                }
+            }
+        }
         return first(db.workouts);
+    }
+    syncWithLibrary(db) {
+        if(!exists(db.workout?.meta?.name)) {
+            return;
+        }
+        const match = db.workouts.find((w) =>
+            equals(w.meta.name, db.workout.meta.name) &&
+            (!exists(db.workout.fileName) || equals(w.fileName, db.workout.fileName))
+        );
+        if(exists(match)) {
+            db.workout = match;
+        }
     }
     // accessors
     find(workouts, id) {
@@ -748,6 +780,16 @@ class Workout extends Model {
     }
 }
 
+function presetWorkoutId(workout, item = {}) {
+    if(exists(item.fileName)) {
+        return `directory:${item.fileName}`;
+    }
+    if(item.source === 'built-in' && exists(workout.meta?.name)) {
+        return `built-in:${workout.meta.name}`;
+    }
+    return uuid();
+}
+
 // TODO:
 // - rename to Libarary
 // - use to just manage the library list of workouts
@@ -760,7 +802,30 @@ class Workouts extends Model {
     }
     defaultValue() {
         const self = this;
-        return workoutsFile.map((w) => Object.assign(self.workoutModel.parse(w), {id: uuid()}));
+        return workoutsFile.map((w) => {
+            const workout = self.workoutModel.parse(w);
+            workout.id = presetWorkoutId(workout, {source: 'built-in'});
+            return workout;
+        });
+    }
+    async presetWorkouts() {
+        const self = this;
+        const builtInWorkouts = workoutsFile.map((content) => ({content, source: 'built-in'}));
+        const directoryWorkouts = await fetchDirectoryWorkouts();
+
+        return builtInWorkouts.concat(directoryWorkouts).map((item) => {
+            const workout = self.workoutModel.parse(item.content, item.fileName ?? '');
+            workout.id = presetWorkoutId(workout, item);
+
+            if(exists(item.fileName)) {
+                workout.fileName = item.fileName;
+            }
+            if(exists(item.source)) {
+                workout.source = item.source;
+            }
+
+            return workout;
+        });
     }
     defaultIsValid(value) {
         const self = this;
@@ -768,12 +833,13 @@ class Workouts extends Model {
     }
     async restore(db) {
         const self = this;
+        const presets = await self.presetWorkouts();
         const workouts = await idb.getAll(`${self.name}`) ?? [];
 
         if(empty(workouts)) {
-            return self.default;
+            return presets;
         } else {
-            return self.default.concat(workouts);
+            return presets.concat(workouts);
         }
     }
     get(workouts, id) {
@@ -1600,6 +1666,7 @@ const dockMode = new DockMode({prop: 'dockMode', storage: LocalStorageItem});
 const volume = new Volume({prop: 'volume', storage: LocalStorageItem});
 const measurement = new Measurement({prop: 'measurement', storage: LocalStorageItem});
 const dataTileSwitch = new DataTileSwitch({prop: 'dataTileSwitch', storage: LocalStorageItem});
+const currentWorkoutId = new CurrentWorkoutId({prop: 'currentWorkoutId', storage: LocalStorageItem});
 
 const power1s = new PropInterval({prop: 'db:power', effect: 'power1s', interval: 1000});
 const power3s = new PropInterval({prop: 'db:power', effect: 'power3s', interval: 3000});
@@ -1650,6 +1717,7 @@ let models = {
     theme,
     measurement,
     dataTileSwitch,
+    currentWorkoutId,
 
     activity,
     workout,
