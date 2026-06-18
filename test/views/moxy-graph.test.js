@@ -10,6 +10,38 @@ import { MoxyGraph } from '../../src/views/moxy-graph.js';
 describe('Moxy Graph View', () => {
 });
 
+describe('Power fill', () => {
+    test('renders zone-colored fill behind metric paths and hides the power line', () => {
+        document.body.innerHTML = `
+            <div>
+                <svg id="moxy-svg">
+                    <polyline id="moxy-path-smo2" class="moxy--path" points=""/>
+                    <polyline id="moxy-path-power" class="moxy--path" points=""/>
+                    <polyline id="moxy-path-cadence" class="moxy--path" points=""/>
+                </svg>
+            </div>
+        `;
+        const moxy = new MoxyGraph();
+        moxy.$svg = document.querySelector('#moxy-svg');
+        moxy.$path.power = document.querySelector('#moxy-path-power');
+        moxy.$powerFill = moxy.ensurePowerFillLayer();
+        moxy.ftp = 200;
+        moxy.samples.power = [100, 160, 220];
+
+        moxy.renderStep('power');
+
+        const polygons = moxy.$powerFill.querySelectorAll('polygon');
+
+        expect(moxy.$svg.firstElementChild).toBe(moxy.$powerFill);
+        expect(moxy.$path.power.style.display).toBe('none');
+        expect(moxy.$path.power.getAttribute('points')).toBe('');
+        expect(polygons).toHaveLength(3);
+        expect(polygons[0].getAttribute('fill')).toBe('#636468');
+        expect(polygons[1].getAttribute('fill')).toBe('#44A5AB');
+        expect(polygons[2].getAttribute('fill')).toBe('#FF663A');
+    });
+});
+
 describe('Fill - Shift - Enlarge - Fill - Shift', () => {
 
     global.console = {

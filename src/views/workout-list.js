@@ -1,5 +1,4 @@
 import { xf, exists, empty, equals, debounce } from '../functions.js';
-import { models } from '../models/models.js';
 import { intervalsToGraph, courseToGraph, renderInfo } from './workout-graph.js';
 
 const radioOff = `
@@ -25,6 +24,7 @@ function workoutTemplate(workout) {
     if(workout.meta.distance) {
         duration = `${(workout.meta.distance / 1000).toFixed(2)} km`;
     }
+    const pss = exists(workout.pss) ? `PSS ${workout.pss}` : '';
     return `<workout-item class='workout cf' id="${workout.id}" metric="ftp">
                 <div class="workout--info">
                     <div class="workout--short-info">
@@ -32,6 +32,7 @@ function workoutTemplate(workout) {
                             <div class="workout--name">${workout.meta.name}</div>
                             <div class="workout--type">${workout.meta.category}</div>
                             <div class="workout--duration">${duration}</div>
+                            <div class="workout--pss">${pss}</div>
                             <div class="workout--select" id="btn${workout.id}">${workout.selected ? radioOn : radioOff}
                             </div>
                             <div class="workout--options">${options}</div>
@@ -120,7 +121,11 @@ class WorkoutList extends HTMLElement {
             }
 
             const selected = equals(workout.id, selectedWorkout.id);
-            workout = Object.assign(workout, {graph: graph, selected: selected});
+            workout = Object.assign(workout, {
+                graph: graph,
+                selected: selected,
+                pss: calculateWorkoutPSS(workout),
+            });
             return acc + workoutTemplate(workout);
         }, '');
     }
@@ -295,6 +300,55 @@ class WorkoutListItem extends HTMLElement {
     }
 }
 
+function stepIntensity(power) {
+    if(!exists(power)) {
+        return 0;
+    }
+
+    return power;
+}
+
+function rampPSS(startIntensity, endIntensity, durationHours) {
+    return durationHours * (
+        (startIntensity * startIntensity) +
+        (startIntensity * endIntensity) +
+        (endIntensity * endIntensity)
+    ) / 3;
+}
+
+function intervalPSS(interval) {
+    const duration = interval?.duration ?? 0;
+    const durationHours = duration / 3600;
+    const steps = interval?.steps ?? [];
+
+    if(durationHours <= 0 || steps.length === 0) {
+        return 0;
+    }
+
+    const firstStep = steps[0];
+    const lastStep = steps[steps.length - 1];
+    const firstIntensity = stepIntensity(firstStep.power);
+    const lastIntensity = stepIntensity(lastStep.power);
+
+    if(steps.length > 1 && !equals(firstIntensity, lastIntensity)) {
+        return rampPSS(firstIntensity, lastIntensity, durationHours);
+    }
+
+    return (firstIntensity * firstIntensity) * durationHours;
+}
+
+function calculateWorkoutPSS(workout) {
+    if(!exists(workout?.intervals)) {
+        return undefined;
+    }
+
+    const pss = workout.intervals.reduce((acc, interval) => {
+        return acc + intervalPSS(interval);
+    }, 0);
+
+    return Math.floor(pss * 100);
+}
+
 customElements.define('workout-list', WorkoutList);
 customElements.define('workout-item', WorkoutListItem);
 
@@ -302,6 +356,10 @@ export {
     radioOff,
     radioOn,
     options,
+    stepIntensity,
+    rampPSS,
+    intervalPSS,
+    calculateWorkoutPSS,
     workoutTemplate,
 };
 
