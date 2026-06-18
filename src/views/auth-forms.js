@@ -162,10 +162,13 @@ class AuthForms extends HTMLElement {
             return;
         }
         if(action === ':no-api') {
-            this.switch('', this.el.tab);
             this.switch('', this.el.password);
-            this.switch('', this.el.passkey);
             this.error('No internet connection or the API service is currently offline.');
+            return;
+        }
+        if(action === ':hosted-only') {
+            this.switch('', this.el.password);
+            this.error('Profile and login features are only available on the official auuki.com deployment.');
             return;
         }
     }

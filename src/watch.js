@@ -301,7 +301,11 @@ class Watch {
                 self.nextInterval(intervals, i, s);
                 self.nextStep(intervals, i, s);
             } else {
-                xf.dispatch('workout:done');
+                // already on the last interval: a manual lap means
+                // "I'm done now" — stop both the workout and the watch
+                // instead of only flipping workoutStatus to 'done',
+                // which would leave the timer ticking with no progress.
+                self.stop();
             }
         } else {
             xf.dispatch('watch:lap');
@@ -427,7 +431,9 @@ xf.reg('watch:stepIndex',     (index, db) => {
         xf.dispatch('ui:cadence-target-set', 0);
     }
     if(exists(powerTarget)) {
-        xf.dispatch('ui:power-target-set', models.ftp.toAbsolute(powerTarget, db.ftp));
+        const absolutePower = models.ftp.toAbsolute(powerTarget, db.ftp);
+        const roundedPower = Math.round(absolutePower / 5.0) * 5;
+        xf.dispatch('ui:power-target-set', roundedPower);
         if(!exists(slopeTarget) && !equals(db.mode, ControlMode.erg)) {
             xf.dispatch('ui:mode-set', ControlMode.erg);
         }

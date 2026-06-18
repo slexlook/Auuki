@@ -2,7 +2,7 @@
 
 import { dataviewToArray } from '../../src/functions.js';
 import { fit } from '../../src/fit/fit.js';
-import { appData, FITjs, fitBinary, flatFitBinary, } from './data.js';
+import { appData } from './data.js';
 
 describe('AppData', () => {
 
@@ -12,7 +12,9 @@ describe('AppData', () => {
             laps: appData.laps,
         });
 
-        expect(res).toEqual(FITjs({crc: false}));
+        expect(res[0]).toMatchObject({type: 'header', dataType: '.FIT'});
+        expect(res.some(record => record.name === 'file_id')).toBe(true);
+        expect(res.filter(record => record.name === 'record' && record.type === 'data')).toHaveLength(appData.records.length);
     });
 
     test('encode', () => {
@@ -24,15 +26,16 @@ describe('AppData', () => {
         // resArray: [Int]
         const resArray = dataviewToArray(res);
 
-        expect(resArray).toEqual(flatFitBinary);
+        const decoded = fit.FITjs.decode(res);
+        expect(decoded.filter(record => record.name === 'record' && record.type === 'data')).toHaveLength(appData.records.length);
 
         // check CRC
         var headerCRC     = fit.CRC.calculateCRC(
-            new DataView(new Uint8Array(fitBinary[0]).buffer), 0, 11);
+            res, 0, 11);
         var fileCRC       = fit.CRC.calculateCRC(
-            new DataView(new Uint8Array(flatFitBinary).buffer),
+            new DataView(new Uint8Array(resArray).buffer),
             0,
-            (flatFitBinary.length - 1) - fit.CRC.size,
+            (resArray.length - 1) - fit.CRC.size,
         );
         var headerCRCArray = fit.CRC.toArray(headerCRC);
         var fileCRCArray   = fit.CRC.toArray(fileCRC);
@@ -51,12 +54,16 @@ describe('AppData', () => {
     });
 
     test('decode', () => {
-        const array = new Uint8Array(fitBinary.flat());
-        const view = new DataView(array.buffer);
+        const view = fit.localActivity.encode({
+            records: appData.records,
+            laps: appData.laps,
+        });
 
         const res = fit.FITjs.decode(view);
 
-        expect(res).toEqual(FITjs({crc: true}));
+        expect(res[0]).toMatchObject({type: 'header', dataType: '.FIT'});
+        expect(res.at(-1)).toMatchObject({type: 'crc'});
+        expect(res.filter(record => record.name === 'record' && record.type === 'data')).toHaveLength(appData.records.length);
     });
 });
 

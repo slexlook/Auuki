@@ -88,7 +88,7 @@ function ReactiveConnectable(args = {}) {
         if('heartRate' in data && models.sources.isSource('heartRate', identifier)) {
             xf.dispatch(`heartRate`, data.heartRate);
 
-            if('rrInterval' in data) {
+            if(exists(data.rrInterval)) {
                 xf.dispatch(`rrInterval`, data.rrInterval);
             }
         }
