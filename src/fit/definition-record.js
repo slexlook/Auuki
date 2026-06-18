@@ -65,9 +65,11 @@ function DefinitionRecord(args = {}) {
     // }
     // -> DataView
     function encode(definition, view, i = 0) {
+        const hasDeveloperFields = ('dev_fields' in definition) && definition.dev_fields.length > 0;
         const header = recordHeader.encode({
             messageType:      _type,
             localMessageType: definition.local_number,
+            messageTypeSpecific: hasDeveloperFields ? 'developer' : 'reserved',
         });
         const numberOfFields = definition.fields.length;
         const globalNumber   = messageNameToNumber(definition.name);
@@ -90,7 +92,7 @@ function DefinitionRecord(args = {}) {
         // if developer fields are defined
         // write # developer fields
         // write developer fields definitions
-        if('dev_fields' in definition) {
+        if(hasDeveloperFields) {
 
             const numberOfDeveloperFields = definition.dev_fields.length;
 
@@ -140,18 +142,20 @@ function DefinitionRecord(args = {}) {
             i += fieldLength;
         }
 
-        i+=1; // add the 'number of dev fields' field
-
         let dev_fields = [];
-        for(let df=0; df < numberOfDevFields; df++) {
-            dev_fields.push(fieldDefinition.decode(messageName, view, i,));
-            i += fieldLength;
+        if(numberOfDevFields > 0) {
+            i += 1;
+
+            for(let df=0; df < numberOfDevFields; df++) {
+                dev_fields.push(fieldDefinition.decode(messageName, view, i,));
+                i += fieldLength;
+            }
         }
 
         const length             = getDefinitionRecordLength(view, start);
         const data_record_length = getDataRecordLength(fields.concat(dev_fields));
 
-        return {
+        const definition = {
             type: _type,
             architecture,
             name: messageName,
@@ -159,8 +163,13 @@ function DefinitionRecord(args = {}) {
             length,
             data_record_length,
             fields,
-            dev_fields,
         };
+
+        if(numberOfDevFields > 0) {
+            definition.dev_fields = dev_fields;
+        }
+
+        return definition;
     }
 
     // ['message_name', ['field_name'], Int] |

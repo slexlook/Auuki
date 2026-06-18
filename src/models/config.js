@@ -3,6 +3,7 @@ class Config {
     #defaultStravaClientId = 0;
     #defaultIntervalsClientId = 0;
     #defaultTrainingPeaksClientId = 0;
+    #officialHosts = ['auuki.com', 'www.auuki.com', 'dev.auuki.com'];
 
     constructor() {
         this.env = {
@@ -19,6 +20,12 @@ class Config {
         this.env.STRAVA_CLIENT_ID = args.strava ?? this.defaultStravaClientId;
         this.env.INTERVALS_CLIENT_ID = args.intervals ?? this.defaultIntervalsClientId;
         this.env.TRAINING_PEAKS_CLIENT_ID = args.trainingPeaks ?? this.defaultTrainingPeaksClientId;
+    }
+    isOfficialHost(hostname = window.location.hostname) {
+        return this.#officialHosts.includes(hostname);
+    }
+    supportsHostedAuth(hostname = window.location.hostname) {
+        return this.isOfficialHost(hostname);
     }
     get() {
         return this.env;

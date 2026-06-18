@@ -61,6 +61,14 @@ const order = [
     'accumulatedEnergy',
 ];
 
+const _ = {
+    flagsIndex: () => 0,
+    wheelRevolutionsIndex: (flags) => wheelRevolutionDataPresent(flags) ? 4 : undefined,
+    wheelEventIndex: (flags) => wheelRevolutionDataPresent(flags) ? 8 : undefined,
+    crankRevolutionsIndex: (flags) => crankRevolutionDataPresent(flags) ? 10 : undefined,
+    crankEventIndex: (flags) => crankRevolutionDataPresent(flags) ? 12 : undefined,
+};
+
 // Example input:
 //
 //
@@ -149,5 +157,7 @@ const cyclingPowerMeasurement = CyclingPowerMeasurement();
 export {
     CyclingPowerMeasurement,
     cyclingPowerMeasurement,
+    cyclingPowerMeasurement as measurement,
+    _,
 };
 

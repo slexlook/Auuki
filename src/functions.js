@@ -76,7 +76,10 @@ function validate(predicates = [], value, fallback = undefined) {
 
 // Collections
 function empty(x) {
+    if(isUndefined(x)) return true;
+    if(isNull(x)) throw new Error(`empty called with null`);
     if(isObject(x)) return (Object.keys(x).length === 0);
+    if(!exists(x.length)) throw new Error(`empty called with non collection`, x);
     return x.length === 0;
 };
 
@@ -89,10 +92,16 @@ const nth = curry2(function(offset, xs) {
 });
 
 function first(xs) {
+    if(isUndefined(xs)) return undefined;
+    if(isNull(xs)) throw new Error(`first called with null`);
+    if(!exists(xs.at)) throw new Error(`first called with non collection`, xs);
     return xs.at(0);
 }
 
 function second(xs) {
+    if(isUndefined(xs)) return undefined;
+    if(isNull(xs)) throw new Error(`second called with null`);
+    if(!exists(xs.at)) throw new Error(`second called with non collection`, xs);
     return xs.at(1);
 }
 
@@ -101,6 +110,9 @@ function third(xs) {
 }
 
 function last(xs) {
+    if(isUndefined(xs)) return undefined;
+    if(isNull(xs)) throw new Error(`last called with null`);
+    if(!exists(xs.at)) throw new Error(`last called with non collection`, xs);
     return xs.at(-1);
 }
 
@@ -180,7 +192,7 @@ function max(xs, prop = false) {
     if(prop !== false) {
         return xs.reduce( (acc,v,i) => v[prop] > acc ? v[prop] : acc, 0);
     } else {
-        return Math.max(xs);
+        return Math.max(...xs);
     }
 };
 

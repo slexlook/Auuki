@@ -250,9 +250,11 @@ xf.reg('ui:power-target-set', (powerTarget, db) => {
     db.powerTarget = models.powerTarget.set(powerTarget);
 });
 xf.reg('ui:power-target-inc', (_, db) => {
+    if(db.lock) return;
     db.powerTarget = models.powerTarget.inc(db.powerTarget);
 });
 xf.reg(`ui:power-target-dec`, (_, db) => {
+    if(db.lock) return;
     db.powerTarget = models.powerTarget.dec(db.powerTarget);
 });
 xf.reg('ui:cadence-target-set', (cadenceTarget, db) => {
@@ -263,9 +265,11 @@ xf.reg('ui:resistance-target-set', (resistanceTarget, db) => {
     db.resistanceTarget = models.resistanceTarget.set(resistanceTarget);
 });
 xf.reg('ui:resistance-target-inc', (_, db) => {
+    if(db.lock) return;
     db.resistanceTarget = models.resistanceTarget.inc(db.resistanceTarget);
 });
 xf.reg(`ui:resistance-target-dec`, (_, db) => {
+    if(db.lock) return;
     db.resistanceTarget = models.resistanceTarget.dec(db.resistanceTarget);
 });
 
@@ -273,9 +277,11 @@ xf.reg('ui:slope-target-set', (slopeTarget, db) => {
     db.slopeTarget = models.slopeTarget.set(slopeTarget);
 });
 xf.reg('ui:slope-target-inc', (_, db) => {
+    if(db.lock) return;
     db.slopeTarget = models.slopeTarget.inc(db.slopeTarget);
 });
 xf.reg(`ui:slope-target-dec`, (_, db) => {
+    if(db.lock) return;
     db.slopeTarget = models.slopeTarget.dec(db.slopeTarget);
 });
 
