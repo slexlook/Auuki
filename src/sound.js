@@ -15,7 +15,6 @@ const notes = [
 ];
 
 function Sound(args) {
-    let vibrate = false;
     let volume  = args.volume ?? 0;
     let audioContext;
     let oscillator;
@@ -30,13 +29,17 @@ function Sound(args) {
         }, signal);
 
         xf.sub('watch:started', _ => {
-            if(!exists(audioContext)) {
-                audioContext = new AudioContext();
-            }
+            ensureAudioContext();
         }, signal);
 
         xf.sub('watch:beep', _ => {
             interval();
+        }, signal);
+
+        xf.sub('ui:workout:text-event', textEvent => {
+            if(exists(textEvent?.message)) {
+                ding();
+            }
         }, signal);
 
         xf.sub('watch:paused', _ => {
@@ -58,9 +61,19 @@ function Sound(args) {
         abortController.abort();
     }
 
+    function ensureAudioContext() {
+        if(!exists(audioContext)) {
+            audioContext = new AudioContext();
+        }
+
+        return audioContext;
+    }
+
     // one standart triange wave,
     // gain is turned up and down to produce beeps,
     function interval() {
+        ensureAudioContext();
+
         const options = {
             type: 'triangle',
         };
@@ -88,6 +101,44 @@ function Sound(args) {
 
         oscillator.start(time);
         oscillator.stop(time + 4.15);
+    }
+
+    function ding() {
+        if(volume <= 0) {
+            return;
+        }
+
+        ensureAudioContext();
+
+        if(equals(audioContext.state, 'suspended')) {
+            audioContext.resume();
+        }
+
+        const time = audioContext.currentTime;
+        const duration = 0.42;
+        const high = (volume / 100) * 0.18;
+
+        const gainNode = audioContext.createGain();
+        gainNode.gain.setValueAtTime(0.0001, time);
+        gainNode.gain.exponentialRampToValueAtTime(Math.max(high, 0.0001), time + 0.012);
+        gainNode.gain.exponentialRampToValueAtTime(0.0001, time + duration);
+        gainNode.connect(audioContext.destination);
+
+        const fundamental = new OscillatorNode(audioContext, {type: 'sine'});
+        const overtone = new OscillatorNode(audioContext, {type: 'sine'});
+        const overtoneGain = audioContext.createGain();
+
+        fundamental.frequency.setValueAtTime(notes[5].e, time);
+        overtone.frequency.setValueAtTime(notes[5].b, time);
+        overtoneGain.gain.setValueAtTime(0.35, time);
+
+        fundamental.connect(gainNode);
+        overtone.connect(overtoneGain).connect(gainNode);
+
+        fundamental.start(time);
+        overtone.start(time);
+        fundamental.stop(time + duration);
+        overtone.stop(time + duration);
     }
 
     // 2 canceling sine waves,
