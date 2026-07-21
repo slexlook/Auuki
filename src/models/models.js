@@ -685,7 +685,7 @@ class Workout extends Model {
         self.api = args.api;
     }
     // state init
-    defaultValue() { return this.parse((first(workoutsFile))); }
+    defaultValue() { return createFreeRideWorkout(); }
     defaultIsValid(value) {
         return exists(value);
     }
@@ -696,6 +696,10 @@ class Workout extends Model {
                     return workout;
                 }
             }
+        }
+        const freeRide = db.workouts.find((workout) => isFreeRideWorkout(workout));
+        if(exists(freeRide)) {
+            return freeRide;
         }
         return first(db.workouts);
     }
@@ -790,6 +794,35 @@ function presetWorkoutId(workout, item = {}) {
     return uuid();
 }
 
+const FREE_RIDE_ID = 'built-in:Free ride';
+
+function createFreeRideWorkout() {
+    return {
+        id: FREE_RIDE_ID,
+        source: 'built-in',
+        meta: {
+            author: 'Auuki',
+            name: 'Free ride',
+            category: 'Free ride',
+            sportType: 'bike',
+            description: 'Ride freely with manual ERG, resistance, or slope control. The timer records your session.',
+            duration: 0,
+            freeRide: true,
+        },
+        intervals: [],
+    };
+}
+
+function isFreeRideWorkout(workout) {
+    if(!exists(workout)) {
+        return false;
+    }
+    if(equals(workout.id, FREE_RIDE_ID)) {
+        return true;
+    }
+    return equals(workout.meta?.freeRide, true);
+}
+
 // TODO:
 // - rename to Libarary
 // - use to just manage the library list of workouts
@@ -802,18 +835,19 @@ class Workouts extends Model {
     }
     defaultValue() {
         const self = this;
-        return workoutsFile.map((w) => {
+        const builtIns = workoutsFile.map((w) => {
             const workout = self.workoutModel.parse(w);
             workout.id = presetWorkoutId(workout, {source: 'built-in'});
             return workout;
         });
+        return [createFreeRideWorkout(), ...builtIns];
     }
     async presetWorkouts() {
         const self = this;
         const builtInWorkouts = workoutsFile.map((content) => ({content, source: 'built-in'}));
         const directoryWorkouts = await fetchDirectoryWorkouts();
 
-        return builtInWorkouts.concat(directoryWorkouts).map((item) => {
+        const presets = builtInWorkouts.concat(directoryWorkouts).map((item) => {
             const workout = self.workoutModel.parse(item.content, item.fileName ?? '');
             workout.id = presetWorkoutId(workout, item);
 
@@ -826,6 +860,8 @@ class Workouts extends Model {
 
             return workout;
         });
+
+        return [createFreeRideWorkout(), ...presets];
     }
     defaultIsValid(value) {
         const self = this;
@@ -868,8 +904,13 @@ class Workouts extends Model {
             console.error(`:models :workouts :remove 'called without workout id!'`);
             return workouts;
         }
-        if(empty(workout)) {
+        if(empty(id)) {
             console.error(`:models :workouts :remove 'called with empty id!'`);
+            return workouts;
+        }
+        const target = workouts.find((w) => equals(w.id, id));
+        if(isFreeRideWorkout(target)) {
+            console.warn(`:models :workouts :remove 'refusing to remove Free ride'`);
             return workouts;
         }
         idb.remove(self.name, id);
@@ -1728,6 +1769,15 @@ let models = {
     PropInterval,
 
     api,
+
+    FREE_RIDE_ID,
+    createFreeRideWorkout,
+    isFreeRideWorkout,
 };
 
-export { models };
+export {
+    models,
+    FREE_RIDE_ID,
+    createFreeRideWorkout,
+    isFreeRideWorkout,
+};

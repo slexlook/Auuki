@@ -1,5 +1,6 @@
 import { xf, exists, empty, equals, debounce } from '../functions.js';
 import { intervalsToGraph, courseToGraph, renderInfo } from './workout-graph.js';
+import { isFreeRideWorkout } from '../models/models.js';
 
 const radioOff = `
         <svg class="radio radio-off">
@@ -24,7 +25,20 @@ function workoutTemplate(workout) {
     if(workout.meta.distance) {
         duration = `${(workout.meta.distance / 1000).toFixed(2)} km`;
     }
-    const pss = exists(workout.pss) ? `PSS ${workout.pss}` : '';
+    const freeRide = isFreeRideWorkout(workout);
+    const pss = (!freeRide && exists(workout.pss)) ? `PSS ${workout.pss}` : '';
+    const optionsHtml = freeRide
+        ? ''
+        : `<div class="workout--options">${options}</div>`;
+    const actionsHtml = freeRide
+        ? ''
+        : `<div class="workout--actions">
+                    <span class="workout--remove">Delete</span>
+                </div>`;
+    const graphHtml = freeRide
+        ? ''
+        : workout.graph;
+
     return `<workout-item class='workout cf' id="${workout.id}" metric="ftp">
                 <div class="workout--info">
                     <div class="workout--short-info">
@@ -35,17 +49,15 @@ function workoutTemplate(workout) {
                             <div class="workout--pss">${pss}</div>
                             <div class="workout--select" id="btn${workout.id}">${workout.selected ? radioOn : radioOff}
                             </div>
-                            <div class="workout--options">${options}</div>
+                            ${optionsHtml}
                         </div>
                     </div>
                     <div class="workout--full-info">
-                        <div class="workout-list--graph-cont">${workout.graph}</div>
+                        <div class="workout-list--graph-cont">${graphHtml}</div>
                         <div class="workout--description">${workout.meta.description}</div>
                     </div>
                 </div>
-                <div class="workout--actions">
-                    <span class="workout--remove">Delete</span>
-                </div>
+                ${actionsHtml}
             </workout-item>`;
 }
 
@@ -114,10 +126,12 @@ class WorkoutList extends HTMLElement {
         return state.reduce((acc, workout, i) => {
             let graph = '';
 
-            if(exists(workout.intervals)) {
-                graph = intervalsToGraph(workout, ftp, viewPort);
-            } else {
-                graph = courseToGraph(workout, viewPort);
+            if(!isFreeRideWorkout(workout)) {
+                if(exists(workout.intervals)) {
+                    graph = intervalsToGraph(workout, ftp, viewPort);
+                } else {
+                    graph = courseToGraph(workout, viewPort);
+                }
             }
 
             const selected = equals(workout.id, selectedWorkout.id);
@@ -171,10 +185,14 @@ class WorkoutListItem extends HTMLElement {
 
         xf.sub('db:workout', this.onWorkout.bind(this), this.signal);
         this.summary.addEventListener('pointerup', this.toggleExpand.bind(this), this.signal);
-        this.optionsBtn.addEventListener('pointerup', this.toggleOptions.bind(this), this.signal);
+        if(this.optionsBtn) {
+            this.optionsBtn.addEventListener('pointerup', this.toggleOptions.bind(this), this.signal);
+        }
         this.selectBtn.addEventListener('pointerup', this.onRadio.bind(this), this.signal);
 
-        this.removeBtn.addEventListener('pointerup', this.onRemove.bind(this), this.signal);
+        if(this.removeBtn) {
+            this.removeBtn.addEventListener('pointerup', this.onRemove.bind(this), this.signal);
+        }
 
         this.addEventListener('mouseover', this.onHover.bind(this), this.signal);
         this.addEventListener('mouseout', this.onMouseOut.bind(this), this.signal);
@@ -338,7 +356,7 @@ function intervalPSS(interval) {
 }
 
 function calculateWorkoutPSS(workout) {
-    if(!exists(workout?.intervals)) {
+    if(!exists(workout?.intervals) || empty(workout.intervals) || isFreeRideWorkout(workout)) {
         return undefined;
     }
 
