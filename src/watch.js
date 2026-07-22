@@ -1,6 +1,6 @@
 import { equals, exists, empty, first, last, xf, avg, max, toFixed, print, } from './functions.js';
 import { kphToMps, mpsToKph, timeDiff, pad } from './utils.js';
-import { models } from './models/models.js';
+import { models, isFreeRideWorkout, } from './models/models.js';
 import { ControlMode, } from './ble/enums.js';
 import { TimerStatus, EventType, } from './activity/enums.js';
 
@@ -34,6 +34,7 @@ class Watch {
         this.hasBeenAutoPaused = false;
         this.autoPause         = true;
         this.autoStart         = true;
+        this.freeRide          = false;
         this.init();
     }
     init() {
@@ -64,10 +65,13 @@ class Watch {
             self.intervals = workout.intervals;
             self.textEvents = self.workoutToTextEvents(workout);
             self.nextTextEventIndex = 0;
+            self.freeRide = isFreeRideWorkout(workout);
             if(workout.meta.category?.toLowerCase().includes("test")) {
                 self.workoutType = "test";
                 // force turn off auto pausing for Test Category workouts
                 xf.dispatch(`sources`, {autoPause: false});
+            } else if(self.freeRide) {
+                self.workoutType = "freeRide";
             } else {
                 self.workoutType = "workout";
             }
@@ -97,6 +101,7 @@ class Watch {
     isStopped()        { return this.state        === 'stopped'; };
     isWorkoutStarted() { return this.stateWorkout === 'started'; };
     isWorkoutDone()    { return this.stateWorkout === 'done'; };
+    isFreeRide()       { return this.freeRide; };
     isIntervalType(type) {
         return equals(this.intervalType, type);
     }
@@ -236,6 +241,14 @@ class Watch {
         // in case of pressing play button during auto start countdown
         this.autoStartCounter = -1;
         xf.dispatch(`ui:autoStartCounter`, -1);
+
+        // Free ride: timer only, no structured workout targets
+        if(self.isFreeRide() || empty(self.intervals)) {
+            if(!self.isStarted()) {
+                self.start();
+            }
+            return;
+        }
 
         if(self.isWorkoutStarted() || (
             // check for intervalIndex allows for multiple workouts in one session

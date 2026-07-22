@@ -1,7 +1,30 @@
 # Changelog
 
 本文档按版本号（SemVer）组织。  
-当前为本分支定义的新版本：`v0.4.0`。
+当前为本分支定义的新版本：`v0.4.1`。
+
+## v0.4.1 (2026-07-22)
+
+> 对比范围：`master...cursor/free-ride-workout-9d8c`
+
+### Release Notes
+
+#### 新增功能
+- 恢复 **Free ride** 自由骑会话：在 Workout 列表顶部增加不可删除的特殊项。
+- 无上次选中记录时默认选中 Free ride；有本地 `currentWorkoutId` 时仍恢复上次课程。
+- 选中 Free ride 后按 Start：仅启动计时，由用户手动控制 ERG / Resistance / Slope；Stop 后照常生成 FIT。
+- 选中普通 workout 后按 Start：行为与现有一致（计时 + 结构化课程）。
+
+#### 体验改进
+- Free ride 在列表中隐藏 Delete / options，避免误删。
+- Free ride 骑行中 Back / Lap 仍可用于记圈并重置 INTERVAL TIME（与旧版自由骑一致）。
+
+#### 测试
+- 补充 Free ride 工厂、默认选中、删除保护等相关单测。
+
+### 提交清单（按提交顺序）
+1. **7f96e94** - 恢复 Free ride 作为默认可选、不可删除的自由骑会话。  
+2. **296555b** - 版本号更新为 `0.4.1`，并补充 Changelog。
 
 ## v0.4.0 (2026-06-10)
 

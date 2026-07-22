@@ -1,6 +1,6 @@
-import { xf, exists, existance, equals, clamp, debounce, toFixed  } from '../functions.js';
+import { xf, exists, existance, equals, clamp, debounce, toFixed, empty  } from '../functions.js';
 import { formatTime, translate } from '../utils.js';
-import { models } from '../models/models.js';
+import { models, isFreeRideWorkout } from '../models/models.js';
 import { g } from './graph.js';
 
 
@@ -247,6 +247,14 @@ class WorkoutGraph extends HTMLElement {
     }
     progress(args = {}) {
         if(this.workoutStatus === "done") {
+            return;
+        }
+
+        if(isFreeRideWorkout(this.workout) || empty(this.workout?.intervals)) {
+            return;
+        }
+
+        if(!exists(this.dom?.intervals?.[args.index ?? this.index ?? 0])) {
             return;
         }
 
